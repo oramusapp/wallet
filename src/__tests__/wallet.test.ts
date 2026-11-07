@@ -74,3 +74,13 @@ describe('amount helpers', () => {
     expect(checkAddress('Solana', '').ok).toBe(false);
   });
 });
+
+describe('cash grouping', () => {
+  it('treats USDC and USDT as cash, not tokens', async () => {
+    const { isCash, CASH_COINS } = await import('../config/coins');
+    expect(CASH_COINS).toEqual(['USDC', 'USDT']);
+    expect(isCash('USDT')).toBe(true);
+    expect(isCash('USDC')).toBe(true);
+    expect(isCash('BTC')).toBe(false);
+  });
+});

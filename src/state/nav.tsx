@@ -3,6 +3,7 @@ import type { CoinId } from '../config/coins';
 
 export type SheetRoute =
   | { kind: 'tokens' }
+  | { kind: 'cash' }
   | { kind: 'manageTokens' }
   | { kind: 'accounts' }
   | { kind: 'createAccount' }
@@ -10,7 +11,8 @@ export type SheetRoute =
   | { kind: 'deposit' }
   | { kind: 'receive'; coin?: CoinId }
   | { kind: 'token'; coin: CoinId }
-  | { kind: 'history' };
+  | { kind: 'history' }
+  | { kind: 'settings' };
 
 export type Tab = 'home' | 'trade' | 'markets';
 

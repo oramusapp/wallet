@@ -65,7 +65,7 @@ export function Home() {
             </Button>
           </div>
 
-          <button type="button" className="cash-row card" onClick={() => nav.open({ kind: 'token', coin: 'USDC' })}>
+          <button type="button" className="cash-row card" onClick={() => nav.open({ kind: 'cash' })}>
             <Icon name="cash" />
             <span className="row-title grow">Cash</span>
             <span className="row-title">{fmtUsd(pf.cashValue)}</span>

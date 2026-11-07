@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CASH_COIN } from '../config/coins';
+import { isCash } from '../config/coins';
 import { positions, totals } from '../lib/portfolio';
 import { usePrices } from './prices';
 import { useWallet } from './wallet';
@@ -10,14 +10,15 @@ export function usePortfolio() {
   const { prices } = usePrices();
   return useMemo(() => {
     const all = positions(active.holdings, prices);
-    const cash = all.find((p) => p.coin.id === CASH_COIN);
-    const tokens = all.filter((p) => p.coin.id !== CASH_COIN);
+    const cash = all.filter((p) => isCash(p.coin.id));
+    const tokens = all.filter((p) => !isCash(p.coin.id));
     const visibleTokens = tokens.filter((p) => !active.hidden.includes(p.coin.id));
-    const visibleAll = all.filter((p) => !active.hidden.includes(p.coin.id) || p.coin.id === CASH_COIN);
+    const visibleAll = [...cash, ...visibleTokens];
     return {
       all,
       cash,
-      cashValue: cash?.value ?? 0,
+      cashValue: totals(cash).value,
+      cashDelta: totals(cash).delta24h,
       tokens,
       visibleTokens,
       total: totals(visibleAll),

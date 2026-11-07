@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CASH_COIN, COIN_BY_ID, type CoinId } from '../../config/coins';
+import { CASH_COIN, COIN_BY_ID, isCash, type CoinId } from '../../config/coins';
 import { CoinPicker } from '../../components/CoinPicker';
 import { Button, CoinIcon, Icon, SheetHeader } from '../../components/ui';
 import { parseAmount, sanitizeAmountInput } from '../../lib/amount';
@@ -20,7 +20,7 @@ export function DepositSheet() {
           </span>
           <div className="col grow">
             <span className="row-title">Add Cash</span>
-            <span className="row-sub">Add USDC to your Cash balance</span>
+            <span className="row-sub">Add USDC or USDT to your Cash balance</span>
           </div>
           <Icon name="chevronRight" size={18} />
         </button>
@@ -51,7 +51,7 @@ export function ReceiveSheet({ initialCoin }: { initialCoin?: CoinId }) {
   const coin = coinId ? COIN_BY_ID[coinId] : undefined;
   const price = coinId ? prices[coinId]?.price : undefined;
   const amount = parseAmount(amountStr);
-  const isCash = coinId === CASH_COIN;
+  const cash = coinId ? isCash(coinId) : false;
 
   if (picking || !coin) {
     return <CoinPicker title="Receive Crypto" onClose={() => (coin ? setPicking(false) : nav.back())} onPick={(c) => (setCoinId(c), setPicking(false))} />;
@@ -59,7 +59,7 @@ export function ReceiveSheet({ initialCoin }: { initialCoin?: CoinId }) {
 
   return (
     <div className="sheet-fill">
-      <SheetHeader title={isCash ? 'Add Cash' : `Receive ${coin.symbol}`} onClose={nav.back} />
+      <SheetHeader title={cash ? 'Add Cash' : `Receive ${coin.symbol}`} onClose={nav.back} />
       {done ? (
         <div className="pad center-screen">
           <div className="success-badge">

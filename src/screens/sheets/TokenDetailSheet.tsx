@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CASH_COIN, COIN_BY_ID, type CoinId } from '../../config/coins';
+import { COIN_BY_ID, type CoinId } from '../../config/coins';
 import { PriceChart } from '../../components/PriceChart';
 import { CoinIcon, Icon, Pct, SheetHeader } from '../../components/ui';
 import { fmtAmount, fmtCompactUsd, fmtPct, fmtPrice, fmtUsd, fmtUsdDelta, signClass, trendClass } from '../../lib/format';
@@ -25,7 +25,7 @@ export function TokenDetailSheet({ coinId }: { coinId: CoinId }) {
   return (
     <>
       <SheetHeader
-        title={coin.id === CASH_COIN ? 'Cash' : coin.name}
+        title={coin.name}
         onBack={nav.stack.length > 1 ? nav.back : undefined}
         onClose={nav.stack.length > 1 ? undefined : nav.closeAll}
         right={

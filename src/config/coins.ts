@@ -62,8 +62,13 @@ export const COIN_BY_ID = Object.fromEntries(COINS.map((c) => [c.id, c])) as Rec
 
 export const CHAINS = Array.from(new Set(COINS.map((c) => c.chain)));
 
-/** Cash = USDC balance, shown in its own row like the reference design. */
+/** Default coin for "Add Cash". */
 export const CASH_COIN: CoinId = 'USDC';
+
+/** Stablecoins are shown together as Cash, never in the Tokens list. */
+export const CASH_COINS: CoinId[] = ['USDC', 'USDT'];
+
+export const isCash = (id: CoinId): boolean => CASH_COINS.includes(id);
 
 export const MARKET_FILTERS: { id: 'all' | Category | 'fav'; label: string }[] = [
   { id: 'all', label: 'All' },

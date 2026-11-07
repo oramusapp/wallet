@@ -7,7 +7,8 @@ import { AccountsSheet, CreateAccountSheet } from './screens/sheets/AccountSheet
 import { DepositSheet, ReceiveSheet } from './screens/sheets/DepositSheets';
 import { SendSheet } from './screens/sheets/SendSheet';
 import { TokenDetailSheet } from './screens/sheets/TokenDetailSheet';
-import { HistorySheet, ManageTokensSheet, TokensSheet } from './screens/sheets/TokenSheets';
+import { CashSheet, HistorySheet, ManageTokensSheet, TokensSheet } from './screens/sheets/TokenSheets';
+import { SettingsSheet } from './screens/sheets/SettingsSheet';
 import { watchForUpdates } from './lib/updates';
 import { useNav, type SheetRoute, type Tab } from './state/nav';
 import { usePrices } from './state/prices';
@@ -27,6 +28,8 @@ function SheetBody({ route }: { route: SheetRoute }) {
   switch (route.kind) {
     case 'tokens':
       return <TokensSheet />;
+    case 'cash':
+      return <CashSheet />;
     case 'manageTokens':
       return <ManageTokensSheet />;
     case 'accounts':
@@ -43,6 +46,8 @@ function SheetBody({ route }: { route: SheetRoute }) {
       return <TokenDetailSheet coinId={route.coin} />;
     case 'history':
       return <HistorySheet />;
+    case 'settings':
+      return <SettingsSheet />;
   }
 }
 
@@ -75,7 +80,7 @@ function SheetHost() {
 
 function Drawer() {
   const nav = useNav();
-  const { active, dispatch } = useWallet();
+  const { active } = useWallet();
   const { status } = usePrices();
   const go = (r: SheetRoute) => {
     nav.setDrawer(false);
@@ -104,16 +109,8 @@ function Drawer() {
           ))}
         </div>
         <div className="drawer-bottom">
-          <button
-            type="button"
-            onClick={() => {
-              if (confirm('Reset all demo accounts, balances and history?')) {
-                dispatch({ type: 'reset' });
-                nav.setDrawer(false);
-              }
-            }}
-          >
-            <Icon name="settings" size={18} /> Reset demo data
+          <button type="button" onClick={() => go({ kind: 'settings' })}>
+            <Icon name="settings" size={18} /> Settings
           </button>
           <div className={`feed-status ${status}`}>
             <span className="dot" />
