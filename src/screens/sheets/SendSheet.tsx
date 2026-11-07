@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CASH_COIN, CHAINS, COIN_BY_ID, COINS, type CoinId } from '../../config/coins';
+import { CHAINS, COIN_BY_ID, COINS, isCash, type CoinId } from '../../config/coins';
 import { Button, Chip, CoinIcon, Icon, SearchField, SheetHeader } from '../../components/ui';
 import { checkAddress, parseAmount, sanitizeAmountInput } from '../../lib/amount';
 import { fmtAmount, fmtUsd, shortAddress, toInputString } from '../../lib/format';
@@ -24,11 +24,11 @@ export function SendSheet({ initialCoin }: { initialCoin?: CoinId }) {
   const assets = useMemo(() => {
     const s = q.trim().toLowerCase();
     const held = COINS.filter((c) => (active.holdings[c.id] ?? 0) > 0);
-    // Cash first, like the reference
-    held.sort((a, b) => (a.id === CASH_COIN ? -1 : b.id === CASH_COIN ? 1 : 0));
+    // Cash (stablecoins) first, like the reference
+    held.sort((a, b) => Number(isCash(b.id)) - Number(isCash(a.id)));
     return held
       .filter((c) => chain === 'All' || c.chain === chain)
-      .filter((c) => !s || c.symbol.toLowerCase().includes(s) || c.name.toLowerCase().includes(s) || (c.id === CASH_COIN && 'cash'.includes(s)));
+      .filter((c) => !s || c.symbol.toLowerCase().includes(s) || c.name.toLowerCase().includes(s) || (isCash(c.id) && 'cash'.includes(s)));
   }, [q, chain, active.holdings]);
 
   const coin = coinId ? COIN_BY_ID[coinId] : undefined;
@@ -79,7 +79,7 @@ export function SendSheet({ initialCoin }: { initialCoin?: CoinId }) {
                   <CoinIcon coin={c} size={36} />
                   <div className="col grow">
                     <span className="row-title">
-                      {c.id === CASH_COIN ? 'Cash' : c.symbol} <span className="muted small">{c.chain}</span>
+                      {c.symbol} <span className="muted small">{isCash(c.id) ? 'Cash' : c.chain}</span>
                     </span>
                     <span className="row-sub">{p !== undefined ? fmtUsd(bal * p) : fmtAmount(bal, c.symbol)}</span>
                   </div>

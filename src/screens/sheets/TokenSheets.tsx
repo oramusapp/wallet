@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CASH_COIN, COIN_BY_ID } from '../../config/coins';
-import { CoinIcon, IconButton, Pct, SearchField, SheetHeader, TokenCard, Toggle } from '../../components/ui';
+import { Button, CoinIcon, Icon, IconButton, Pct, SearchField, SheetHeader, TokenCard, Toggle } from '../../components/ui';
 import { fmtAmount, fmtUsd, fmtUsdDeltaPrecise, signClass, timeAgo } from '../../lib/format';
 import { usePortfolio } from '../../state/hooks';
 import { useNav } from '../../state/nav';
@@ -8,7 +8,6 @@ import { useWallet } from '../../state/wallet';
 
 export function TokensSheet() {
   const nav = useNav();
-  const { active } = useWallet();
   const pf = usePortfolio();
   return (
     <>
@@ -22,15 +21,49 @@ export function TokensSheet() {
           </div>
         </div>
         <div className="stack">
-          {pf.all
-            .filter((p) => p.coin.id === CASH_COIN || !active.hidden.includes(p.coin.id))
-            .map((p) => (
-              <TokenCard key={p.coin.id} p={p} onClick={() => nav.push({ kind: 'token', coin: p.coin.id })} />
-            ))}
-          {pf.isEmpty && <div className="empty">No tokens yet</div>}
+          <button type="button" className="cash-row card" onClick={() => nav.push({ kind: 'cash' })}>
+            <Icon name="cash" />
+            <span className="row-title grow">Cash</span>
+            <span className="row-title">{fmtUsd(pf.cashValue)}</span>
+          </button>
+          {pf.visibleTokens.map((p) => (
+            <TokenCard key={p.coin.id} p={p} onClick={() => nav.push({ kind: 'token', coin: p.coin.id })} />
+          ))}
+          {pf.tokens.length === 0 && <div className="empty">No tokens yet</div>}
         </div>
       </div>
     </>
+  );
+}
+
+/** Cash = all stablecoin balances (USDC + USDT). */
+export function CashSheet() {
+  const nav = useNav();
+  const pf = usePortfolio();
+  return (
+    <div className="sheet-fill">
+      <SheetHeader title="Cash" onBack={nav.stack.length > 1 ? nav.back : undefined} onClose={nav.stack.length > 1 ? undefined : nav.closeAll} />
+      <div className="pad">
+        <div className="balance">
+          <div className="balance-value">{fmtUsd(pf.cashValue)}</div>
+          <div className="balance-delta muted small">USDC + USDT</div>
+        </div>
+        <div className="stack">
+          {pf.cash.map((p) => (
+            <TokenCard key={p.coin.id} p={p} onClick={() => nav.push({ kind: 'token', coin: p.coin.id })} />
+          ))}
+          {pf.cash.length === 0 && <div className="empty">No cash yet</div>}
+        </div>
+      </div>
+      <div className="sheet-footer action-row">
+        <Button variant="secondary" disabled={pf.cash.length === 0} onClick={() => nav.push({ kind: 'send', coin: pf.cash[0]?.coin.id })}>
+          <Icon name="send" size={16} filled /> Send
+        </Button>
+        <Button onClick={() => nav.push({ kind: 'receive', coin: CASH_COIN })}>
+          <Icon name="plus" size={16} /> Add Cash
+        </Button>
+      </div>
+    </div>
   );
 }
 

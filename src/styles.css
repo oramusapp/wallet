@@ -1255,3 +1255,12 @@ button.token-card:active,
     transition: none !important;
   }
 }
+
+.danger-row .row-title,
+.danger-row .option-icon {
+  color: var(--red);
+}
+
+.option-row .row-sub {
+  white-space: normal;
+}
