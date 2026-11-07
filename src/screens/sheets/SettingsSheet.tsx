@@ -1,4 +1,5 @@
 import { Icon, SheetHeader } from '../../components/ui';
+import { isIOS, isStandalone } from '../../lib/display';
 import { useNav } from '../../state/nav';
 import { usePrices } from '../../state/prices';
 import { useWallet } from '../../state/wallet';
@@ -30,10 +31,22 @@ export function SettingsSheet() {
             <span>{state.accounts.length}</span>
           </div>
           <div>
+            <span>Display</span>
+            <span>{isStandalone() ? 'Web app (home screen)' : 'Browser'}</span>
+          </div>
+          <div>
             <span>App version</span>
             <span className="mono">{__APP_VERSION__.slice(0, 7)}</span>
           </div>
         </div>
+
+        {!isStandalone() && (
+          <p className="demo-note">
+            {isIOS()
+              ? 'To open without the address bar: in Safari tap Share → Add to Home Screen, turn on "Open as Web App", then tap Add. Remove the old icon first.'
+              : 'To open without the address bar, install the app from your browser menu (Install app / Add to Home Screen).'}
+          </p>
+        )}
 
         <button type="button" className="option-row card" onClick={() => nav.push({ kind: 'manageTokens' })}>
           <span className="option-icon">

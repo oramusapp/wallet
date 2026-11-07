@@ -1283,3 +1283,22 @@ button.token-card:active,
   border-radius: 50%;
   object-fit: cover;
 }
+
+.banner.install {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--surface);
+  color: var(--text-2);
+  line-height: 1.4;
+}
+
+.banner.install b {
+  color: var(--text);
+}
+
+.banner.install button {
+  flex: none;
+  color: var(--text-2);
+  padding: 2px;
+}

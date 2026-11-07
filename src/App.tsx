@@ -10,6 +10,7 @@ import { TokenDetailSheet } from './screens/sheets/TokenDetailSheet';
 import { CashSheet, HistorySheet, ManageTokensSheet, TokensSheet } from './screens/sheets/TokenSheets';
 import { SettingsSheet } from './screens/sheets/SettingsSheet';
 import { watchForUpdates } from './lib/updates';
+import { isIOS, isStandalone } from './lib/display';
 import { useNav, type SheetRoute, type Tab } from './state/nav';
 import { usePrices } from './state/prices';
 import { useWallet } from './state/wallet';
@@ -128,6 +129,21 @@ export default function App() {
   const { status } = usePrices();
   const [query, setQuery] = useState('');
   const [updateReady, setUpdateReady] = useState(false);
+  const [installHint, setInstallHint] = useState(() => {
+    try {
+      return isIOS() && !isStandalone() && localStorage.getItem('oramus-wallet:install-hint') !== 'dismissed';
+    } catch {
+      return false;
+    }
+  });
+  const dismissHint = () => {
+    setInstallHint(false);
+    try {
+      localStorage.setItem('oramus-wallet:install-hint', 'dismissed');
+    } catch {
+      /* ignore */
+    }
+  };
 
   useEffect(() => watchForUpdates(() => setUpdateReady(true)), []);
 
@@ -149,6 +165,16 @@ export default function App() {
       </header>
 
       {status === 'error' && <div className="banner">Can't reach Hyperliquid. Retrying…</div>}
+      {installHint && (
+        <div className="banner install">
+          <span>
+            Open without the address bar: Safari → Share → <b>Add to Home Screen</b> → turn on <b>Open as Web App</b>.
+          </span>
+          <button type="button" aria-label="Dismiss" onClick={dismissHint}>
+            <Icon name="close" size={16} />
+          </button>
+        </div>
+      )}
       {updateReady && (
         <button type="button" className="banner update" onClick={() => location.reload()}>
           New version available — tap to update
