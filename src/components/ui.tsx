@@ -1,5 +1,5 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import { COIN_BY_ID, type Coin, type CoinId } from '../config/coins';
+import { useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import type { Coin } from '../config/coins';
 import { fmtAmount, fmtCompactUsd, fmtPct, fmtPrice, fmtUsd, fmtUsdDelta, signClass, trendClass } from '../lib/format';
 import type { Position } from '../lib/portfolio';
 import type { MarketStats } from '../lib/hyperliquid';
@@ -94,9 +94,41 @@ export function Icon({ name, size = 20, filled = false, className }: { name: Ico
 
 /* ---------- primitives ---------- */
 
-export function CoinIcon({ coin, size = 44 }: { coin: Coin | CoinId; size?: number }) {
-  const c = typeof coin === 'string' ? COIN_BY_ID[coin] : coin;
-  return <img className="coin-icon" src={c.icon} alt="" width={size} height={size} style={{ width: size, height: size }} draggable={false} />;
+const FALLBACK_COLORS = ['#5b8def', '#e8833a', '#3fb68b', '#a99cf6', '#e0517a', '#d4b13f', '#4fb3c9', '#8c6be8'];
+
+/** Coin logo; a lettered avatar is shown until the image loads, and stays if it fails. */
+export function CoinIcon({ coin, size = 44 }: { coin: Coin; size?: number }) {
+  // keyed by URL so a different coin in the same slot starts over
+  const [loaded, setLoaded] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const ok = loaded === coin.icon;
+  let h = 0;
+  for (const ch of coin.symbol) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return (
+    <span
+      className={`coin-icon coin-fallback${ok ? ' loaded' : ''}`}
+      aria-hidden="true"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * (coin.symbol.length > 3 ? 0.3 : 0.36),
+        background: ok ? 'transparent' : FALLBACK_COLORS[h % FALLBACK_COLORS.length],
+      }}
+    >
+      {!ok && coin.symbol.slice(0, 4)}
+      {coin.icon && failed !== coin.icon && (
+        <img
+          src={coin.icon}
+          alt=""
+          draggable={false}
+          loading="lazy"
+          style={{ opacity: ok ? 1 : 0 }}
+          onLoad={() => setLoaded(coin.icon)}
+          onError={() => setFailed(coin.icon)}
+        />
+      )}
+    </span>
+  );
 }
 
 export function IconButton({ icon, label, ...rest }: { icon: IconName; label: string } & ButtonHTMLAttributes<HTMLButtonElement>) {
@@ -211,7 +243,7 @@ export function MarketRow({ coin, stats, mc, onClick }: { coin: Coin; stats: Mar
       <CoinIcon coin={coin} size={48} />
       <div className="col grow">
         <span className="row-title lg">{coin.symbol}</span>
-        <span className="row-sub lg">{fmtCompactUsd(mc)} MC</span>
+        <span className="row-sub lg">{mc !== undefined ? `${fmtCompactUsd(mc)} MC` : stats?.volume24h ? `${fmtCompactUsd(stats.volume24h)} Vol` : coin.name}</span>
       </div>
       <div className="col end">
         <span className="row-title lg">{fmtPrice(stats?.price)}</span>

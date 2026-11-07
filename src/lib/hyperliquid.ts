@@ -1,4 +1,5 @@
-import { COINS, type Coin, type CoinId } from '../config/coins';
+import type { Coin, CoinId } from '../config/coins';
+import { buildRegistry, type PerpAsset, type SpotPair, type SpotToken } from '../config/registry';
 
 export const HL_INFO_URL = 'https://api.hyperliquid.xyz/info';
 export const HL_WS_URL = 'wss://api.hyperliquid.xyz/ws';
@@ -36,6 +37,10 @@ interface SpotCtx {
   dayNtlVlm: string;
 }
 
+type PerpResponse = [{ universe: PerpAsset[] }, PerpCtx[]];
+type SpotResponse = [{ tokens: SpotToken[]; universe: SpotPair[] }, SpotCtx[]];
+
+
 async function info<T>(body: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(HL_INFO_URL, {
     method: 'POST',
@@ -60,7 +65,7 @@ function num(s: string | null | undefined): number {
 export function buildStats(
   perp: [{ universe: { name: string }[] }, PerpCtx[]],
   spot: [unknown, SpotCtx[]],
-  coins: Coin[] = COINS,
+  coins: Coin[],
 ): PriceMap {
   const perpByName = new Map<string, PerpCtx>();
   perp[0].universe.forEach((u, i) => {
@@ -97,16 +102,18 @@ export function buildStats(
   return out;
 }
 
-export async function fetchMarketStats(signal?: AbortSignal): Promise<PriceMap> {
+/** Every Hyperliquid coin we list, plus a stats snapshot for each. */
+export async function fetchMarketData(signal?: AbortSignal): Promise<{ coins: Coin[]; stats: PriceMap }> {
   const [perp, spot] = await Promise.all([
-    info<[{ universe: { name: string }[] }, PerpCtx[]]>({ type: 'metaAndAssetCtxs' }, signal),
-    info<[unknown, SpotCtx[]]>({ type: 'spotMetaAndAssetCtxs' }, signal),
+    info<PerpResponse>({ type: 'metaAndAssetCtxs' }, signal),
+    info<SpotResponse>({ type: 'spotMetaAndAssetCtxs' }, signal),
   ]);
-  return buildStats(perp, spot);
+  const coins = buildRegistry(perp[0].universe, spot[0], spot[1]);
+  return { coins, stats: buildStats(perp, spot, coins) };
 }
 
 /** Maps an `allMids` payload onto coin prices (scale applied). */
-export function midsToPrices(mids: Record<string, string>, coins: Coin[] = COINS): Partial<Record<CoinId, number>> {
+export function midsToPrices(mids: Record<string, string>, coins: Coin[]): Partial<Record<CoinId, number>> {
   const out: Partial<Record<CoinId, number>> = {};
   for (const c of coins) {
     if (c.source.kind === 'fixed') continue;

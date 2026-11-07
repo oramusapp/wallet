@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { CASH_COIN, COIN_BY_ID } from '../../config/coins';
+import { CASH_COIN, type Coin } from '../../config/coins';
+import { usePrices } from '../../state/prices';
 import { Button, CoinIcon, Icon, IconButton, Pct, SearchField, SheetHeader, TokenCard, Toggle } from '../../components/ui';
 import { fmtAmount, fmtUsd, fmtUsdDeltaPrecise, signClass, timeAgo } from '../../lib/format';
 import { usePortfolio } from '../../state/hooks';
@@ -101,15 +102,19 @@ export function ManageTokensSheet() {
 export function HistorySheet() {
   const nav = useNav();
   const { state, active } = useWallet();
+  const { byId } = usePrices();
   const txs = state.txs.filter((t) => t.accountId === active.id);
+  /** Coins can be delisted later; keep history readable anyway. */
+  const coinOf = (id: string): Coin =>
+    byId[id] ?? { id, symbol: id, name: id, chain: 'Hyperliquid', icon: '', category: 'other', source: { kind: 'fixed', price: 0 }, priceScale: 1, decimals: 8 };
   return (
     <>
       <SheetHeader title="History" onClose={nav.closeAll} />
       <div className="pad stack">
         {txs.length === 0 && <div className="empty">No activity yet</div>}
         {txs.map((t) => {
-          const c = COIN_BY_ID[t.coin];
-          const title = t.kind === 'send' ? `Sent ${c.symbol}` : t.kind === 'deposit' ? `Received ${c.symbol}` : `Swapped ${c.symbol} → ${COIN_BY_ID[t.toCoin].symbol}`;
+          const c = coinOf(t.coin);
+          const title = t.kind === 'send' ? `Sent ${c.symbol}` : t.kind === 'deposit' ? `Received ${c.symbol}` : `Swapped ${c.symbol} → ${coinOf(t.toCoin).symbol}`;
           const sub = t.kind === 'send' ? `To ${t.to.length > 12 ? `${t.to.slice(0, 4)}…${t.to.slice(-4)}` : t.to}` : timeAgo(t.ts);
           return (
             <div key={t.id} className="list-row static">
@@ -120,7 +125,7 @@ export function HistorySheet() {
               </div>
               <div className="col end">
                 <span className={`row-title ${t.kind === 'deposit' ? 'up' : ''}`}>
-                  {t.kind === 'swap' ? `+${fmtAmount(t.toAmount, COIN_BY_ID[t.toCoin].symbol)}` : `${t.kind === 'send' ? '-' : '+'}${fmtAmount(t.amount, c.symbol)}`}
+                  {t.kind === 'swap' ? `+${fmtAmount(t.toAmount, coinOf(t.toCoin).symbol)}` : `${t.kind === 'send' ? '-' : '+'}${fmtAmount(t.amount, c.symbol)}`}
                 </span>
                 <span className="row-sub">{fmtUsd(t.usd)}</span>
               </div>
