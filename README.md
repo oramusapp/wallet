@@ -13,6 +13,17 @@ npm test           # testy jednostkowe (vitest)
 npm run build      # build produkcyjny do dist/
 ```
 
+## Publikacja i automatyczne aktualizacje
+
+- Każdy push do `main` uruchamia workflow `.github/workflows/deploy.yml`: testy → build → deploy na **GitHub Pages**
+  (adres: `https://oramusapp.github.io/wallet/`).
+- Pull requesty przechodzą te same testy i build (bez deployu).
+- Każdy build zapisuje `version.json` (SHA commita). Otwarta aplikacja sprawdza go co minutę i przy powrocie do karty;
+  gdy wykryje nową wersję, pokazuje pasek „New version available” i sama przeładowuje się, kiedy przejdzie w tło.
+- Aplikację można dodać do ekranu głównego telefonu (manifest PWA).
+
+Wymagane jednorazowo: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+
 ## Funkcje
 
 - **Home**: saldo konta, zmiana 24h ($ i %), Send / Deposit, Cash (USDC), lista tokenów, Explore Markets.

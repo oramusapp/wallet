@@ -122,6 +122,15 @@ img {
   font-size: 14px;
 }
 
+.banner.update {
+  display: block;
+  width: calc(100% - 32px);
+  background: #221c3d;
+  color: var(--accent);
+  font-weight: 700;
+  text-align: center;
+}
+
 /* ---------- layout ---------- */
 
 .screen {

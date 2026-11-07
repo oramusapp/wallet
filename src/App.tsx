@@ -8,6 +8,7 @@ import { DepositSheet, ReceiveSheet } from './screens/sheets/DepositSheets';
 import { SendSheet } from './screens/sheets/SendSheet';
 import { TokenDetailSheet } from './screens/sheets/TokenDetailSheet';
 import { HistorySheet, ManageTokensSheet, TokensSheet } from './screens/sheets/TokenSheets';
+import { watchForUpdates } from './lib/updates';
 import { useNav, type SheetRoute, type Tab } from './state/nav';
 import { usePrices } from './state/prices';
 import { useWallet } from './state/wallet';
@@ -129,6 +130,9 @@ export default function App() {
   const { active } = useWallet();
   const { status } = usePrices();
   const [query, setQuery] = useState('');
+  const [updateReady, setUpdateReady] = useState(false);
+
+  useEffect(() => watchForUpdates(() => setUpdateReady(true)), []);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -148,6 +152,11 @@ export default function App() {
       </header>
 
       {status === 'error' && <div className="banner">Can't reach Hyperliquid. Retrying…</div>}
+      {updateReady && (
+        <button type="button" className="banner update" onClick={() => location.reload()}>
+          New version available — tap to update
+        </button>
+      )}
 
       <main>
         {nav.tab === 'home' && <Home />}
