@@ -8,7 +8,7 @@ import { nextAccountName, useWallet } from '../../state/wallet';
 
 export function AccountsSheet() {
   const { state, dispatch } = useWallet();
-  const { prices } = usePrices();
+  const { prices, coins } = usePrices();
   const nav = useNav();
   const [menu, setMenu] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
@@ -19,7 +19,7 @@ export function AccountsSheet() {
       <div className="pad stack">
         <h2 className="section-title">Accounts</h2>
         {state.accounts.map((a) => {
-          const value = totals(positions(a.holdings, prices)).value;
+          const value = totals(positions(a.holdings, prices, coins)).value;
           const selected = a.id === state.activeId;
           return (
             <div key={a.id} className={`account-row card${selected ? ' selected' : ''}`}>

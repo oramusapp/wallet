@@ -2,7 +2,7 @@
 
 Mobilny portfel kryptowalut (web app, mobile-first) z cenami **na żywo z Hyperliquid**.
 
-Monety: BTC, ETH, SOL, HYPE, USDC, USDT, ZEC, XMR, LINK, XRP, SUI, DOGE, PEPE.
+Monety: **wszystkie tokeny z Hyperliquid**: każdy aktywny perp z głównej giełdy (~180) oraz każdy token spot z parą do USDC, który miał obrót w ostatnich 24h (~95). Lista jest pobierana na żywo z API, więc nowe listingi pojawiają się same. Główne monety (BTC, ETH, SOL, HYPE, USDC, USDT, ZEC, XMR, LINK, XRP, SUI, DOGE, PEPE) mają własne ikony i szacowany market cap.
 
 ## Uruchomienie
 
@@ -40,8 +40,9 @@ Wymagane jednorazowo: **Settings → Pages → Build and deployment → Source: 
 
 | Moneta | Rynek Hyperliquid |
 | --- | --- |
-| BTC, ETH, SOL, HYPE, ZEC, XMR, LINK, XRP, SUI, DOGE | perp (mid price) |
-| PEPE | perp `kPEPE` ÷ 1000 |
+| BTC, ETH, SOL, HYPE, ZEC, XMR, LINK, XRP, SUI, DOGE i wszystkie inne perpy | perp (mid price) |
+| PEPE, SHIB, BONK, FLOKI, LUNC, NEIRO | perp `kXXX` ÷ 1000 |
+| pozostałe tokeny spot (np. PURR, UBTC, HFUN) | para spot do USDC |
 | USDT | spot `@166` (USDT0/USDC) |
 | USDC | stałe $1 (waluta kwotowania na Hyperliquid) |
 
@@ -49,7 +50,9 @@ Wymagane jednorazowo: **Settings → Pages → Build and deployment → Source: 
 - Zmiana 24h, wolumen, OI, funding: `metaAndAssetCtxs` + `spotMetaAndAssetCtxs`, odświeżane co 60 s.
 - Wykresy: `candleSnapshot`.
 
-**Market cap jest szacunkowy**: Hyperliquid nie publikuje kapitalizacji, więc MC = cena z Hyperliquid × przybliżona podaż w obiegu wpisana w `src/config/coins.ts` (`approxSupply`). Wartości podaży można tam edytować.
+**Market cap jest szacunkowy** i pokazywany tylko dla głównych monet: Hyperliquid nie publikuje kapitalizacji, więc MC = cena z Hyperliquid × przybliżona podaż w obiegu wpisana w `src/config/coins.ts` (`approxSupply`). Dla pozostałych tokenów zamiast MC wyświetlany jest wolumen 24h z Hyperliquid (podaż raportowana przez Hyperliquid dla spotu jest zawyżona m.in. dla wrapped tokenów i tokenizowanych akcji).
+
+Ikony pozostałych tokenów pochodzą z `app.hyperliquid.xyz/coins/…`; jeśli ikony nie ma, pokazywany jest kolorowy awatar z symbolem. Rynki HIP-3 (osobne giełdy perp, np. akcje) nie są uwzględnione.
 
 ## Tryb demo — ważne
 
@@ -60,7 +63,8 @@ Nie wysyłaj prawdziwych środków na podstawie tej aplikacji.
 ## Struktura
 
 ```
-src/config/coins.ts      lista monet, mapowanie na rynki Hyperliquid, podaż do MC
+src/config/coins.ts      główne monety (ikony, podaż do MC), Cash, filtry
+src/config/registry.ts   budowanie listy wszystkich tokenów z API Hyperliquid
 src/lib/hyperliquid.ts   klient API (REST + WebSocket + świece)
 src/lib/format.ts        formatowanie cen/kwot jak w makietach
 src/state/               ceny (PricesProvider), portfel (reducer + localStorage), nawigacja

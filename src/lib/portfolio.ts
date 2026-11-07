@@ -1,4 +1,4 @@
-import { COINS, type Coin, type CoinId } from '../config/coins';
+import type { Coin, CoinId } from '../config/coins';
 import type { Holdings } from '../state/wallet';
 import type { PriceMap } from './hyperliquid';
 
@@ -11,8 +11,8 @@ export interface Position {
   delta24h: number;
 }
 
-export function positions(holdings: Holdings, prices: PriceMap, exclude: CoinId[] = []): Position[] {
-  return COINS.filter((c) => (holdings[c.id] ?? 0) > 0 && !exclude.includes(c.id))
+export function positions(holdings: Holdings, prices: PriceMap, coins: Coin[], exclude: CoinId[] = []): Position[] {
+  return coins.filter((c) => (holdings[c.id] ?? 0) > 0 && !exclude.includes(c.id))
     .map((coin) => {
       const amount = holdings[coin.id] ?? 0;
       const s = prices[coin.id];
@@ -38,7 +38,23 @@ export function totals(list: Position[]): Totals {
   return { value, delta24h, change24h: prev > 0 ? (delta24h / prev) * 100 : 0 };
 }
 
+/**
+ * Estimated market cap: Hyperliquid price × `approxSupply`, curated coins only.
+ * Hyperliquid's own spot supply figures are not reliable enough for this
+ * (wrapped assets and tokenized stocks report inflated totals), so other coins have none.
+ */
 export function marketCap(coin: Coin, prices: PriceMap): number | undefined {
   const p = prices[coin.id]?.price;
-  return p ? p * coin.approxSupply : undefined;
+  return p && coin.approxSupply ? p * coin.approxSupply : undefined;
+}
+
+/** Sort key for market lists: market cap when known, otherwise 24h volume (ranked after MC coins). */
+export function marketRank(coin: Coin, prices: PriceMap): [number, number] {
+  return [marketCap(coin, prices) ?? 0, prices[coin.id]?.volume24h ?? 0];
+}
+
+export function compareMarkets(a: Coin, b: Coin, prices: PriceMap): number {
+  const [ma, va] = marketRank(a, prices);
+  const [mb, vb] = marketRank(b, prices);
+  return mb - ma || vb - va;
 }

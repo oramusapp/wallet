@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { COIN_BY_ID, type CoinId } from '../../config/coins';
+import type { CoinId } from '../../config/coins';
 import { PriceChart } from '../../components/PriceChart';
 import { CoinIcon, Icon, Pct, SheetHeader } from '../../components/ui';
 import { fmtAmount, fmtCompactUsd, fmtPct, fmtPrice, fmtUsd, fmtUsdDelta, signClass, trendClass } from '../../lib/format';
@@ -9,16 +9,25 @@ import { usePrices } from '../../state/prices';
 import { useWallet } from '../../state/wallet';
 
 export function TokenDetailSheet({ coinId }: { coinId: CoinId }) {
-  const coin = COIN_BY_ID[coinId];
   const nav = useNav();
-  const { prices } = usePrices();
+  const { prices, byId } = usePrices();
+  const coin = byId[coinId];
   const { active, state, dispatch } = useWallet();
   const [scrub, setScrub] = useState<{ price: number; change: number } | null>(null);
   const stats = prices[coinId];
   const bal = active.holdings[coinId] ?? 0;
   const fav = state.favorites.includes(coinId);
+  if (!coin) {
+    return (
+      <>
+        <SheetHeader title={coinId} onClose={nav.closeAll} />
+        <div className="empty">Loading…</div>
+      </>
+    );
+  }
   const src = coin.source;
-  const sourceLabel = src.kind === 'perp' ? `${src.market}-USD perp` : src.kind === 'spot' ? 'USDT0/USDC spot' : 'Quote asset ($1)';
+  const sourceLabel =
+    src.kind === 'perp' ? `${src.market}-USD perp` : src.kind === 'spot' ? `${coin.id === 'USDT' ? 'USDT0' : coin.symbol}/USDC spot` : 'Quote asset ($1)';
   const shownPrice = scrub?.price ?? stats?.price;
   const shownChange = scrub ? scrub.change : stats?.change24h;
 
@@ -82,10 +91,12 @@ export function TokenDetailSheet({ coinId }: { coinId: CoinId }) {
 
         <h2 className="section-title">Info</h2>
         <div className="kv card">
-          <div>
-            <span>Market cap (est.)</span>
-            <span>{fmtCompactUsd(marketCap(coin, prices))}</span>
-          </div>
+          {marketCap(coin, prices) !== undefined && (
+            <div>
+              <span>Market cap (est.)</span>
+              <span>{fmtCompactUsd(marketCap(coin, prices))}</span>
+            </div>
+          )}
           <div>
             <span>24h change</span>
             <span className={trendClass(stats?.change24h)}>{fmtPct(stats?.change24h)}</span>

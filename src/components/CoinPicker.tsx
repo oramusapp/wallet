@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { COINS, type CoinId } from '../config/coins';
+import type { CoinId } from '../config/coins';
+import { compareMarkets } from '../lib/portfolio';
 import { fmtAmount, fmtPrice, fmtUsd } from '../lib/format';
 import { usePrices } from '../state/prices';
 import { useWallet } from '../state/wallet';
@@ -18,13 +19,16 @@ interface Props {
 export function CoinPicker({ title, heldOnly, exclude = [], onPick, onClose }: Props) {
   const [q, setQ] = useState('');
   const { active } = useWallet();
-  const { prices } = usePrices();
+  const { prices, coins } = usePrices();
   const list = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return COINS.filter((c) => !exclude.includes(c.id))
-      .filter((c) => !heldOnly || (active.holdings[c.id] ?? 0) > 0)
-      .filter((c) => !s || c.symbol.toLowerCase().includes(s) || c.name.toLowerCase().includes(s));
-  }, [q, heldOnly, exclude, active.holdings]);
+    const held = (id: CoinId) => (active.holdings[id] ?? 0) > 0;
+    return coins
+      .filter((c) => !exclude.includes(c.id))
+      .filter((c) => !heldOnly || held(c.id))
+      .filter((c) => !s || c.symbol.toLowerCase().includes(s) || c.name.toLowerCase().includes(s))
+      .sort((a, b) => Number(held(b.id)) - Number(held(a.id)) || compareMarkets(a, b, prices));
+  }, [q, heldOnly, exclude, active.holdings, coins, prices]);
 
   return (
     <div className="overlay" role="dialog" aria-label={title}>

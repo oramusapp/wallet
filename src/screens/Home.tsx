@@ -1,29 +1,26 @@
 import { useMemo, useState } from 'react';
-import { COINS, MARKET_FILTERS } from '../config/coins';
+import { MARKET_FILTERS, matchesFilter, type MarketFilter } from '../config/coins';
 import { fmtUsd, fmtUsdDeltaPrecise, signClass } from '../lib/format';
-import { marketCap } from '../lib/portfolio';
+import { compareMarkets, marketCap } from '../lib/portfolio';
 import { usePortfolio } from '../state/hooks';
 import { useNav } from '../state/nav';
 import { usePrices } from '../state/prices';
 import { useWallet } from '../state/wallet';
 import { Button, Chip, Icon, MarketRow, Pct, SectionTitle, Skeleton, TokenCard } from '../components/ui';
 
-type Filter = (typeof MARKET_FILTERS)[number]['id'];
 
 export function Home() {
   const { active, state } = useWallet();
-  const { prices, status } = usePrices();
+  const { prices, status, coins } = usePrices();
   const nav = useNav();
   const pf = usePortfolio();
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<MarketFilter>('all');
   const loading = status === 'loading';
 
   const markets = useMemo(() => {
-    const list = COINS.filter((c) =>
-      filter === 'all' ? true : filter === 'fav' ? state.favorites.includes(c.id) : c.category === filter,
-    );
-    return list.sort((a, b) => (marketCap(b, prices) ?? 0) - (marketCap(a, prices) ?? 0)).slice(0, 6);
-  }, [filter, prices, state.favorites]);
+    const list = coins.filter((c) => matchesFilter(c, filter, state.favorites));
+    return list.sort((a, b) => compareMarkets(a, b, prices)).slice(0, 6);
+  }, [filter, prices, state.favorites, coins]);
 
   return (
     <div className="screen">

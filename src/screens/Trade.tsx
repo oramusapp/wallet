@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { COIN_BY_ID, type CoinId } from '../config/coins';
+import type { CoinId } from '../config/coins';
 import { CoinPicker } from '../components/CoinPicker';
 import { Button, CoinIcon, Icon } from '../components/ui';
 import { parseAmount, quoteSwap, sanitizeAmountInput } from '../lib/amount';
@@ -13,7 +13,7 @@ export const SWAP_FEE_BPS = 0;
 
 export function Trade() {
   const { active, dispatch } = useWallet();
-  const { prices } = usePrices();
+  const { prices, byId } = usePrices();
   const nav = useNav();
   const pf = usePortfolio();
   const firstHeld = pf.all[0]?.coin.id;
@@ -37,8 +37,8 @@ export function Trade() {
     if (!from && firstHeld) setFrom(firstHeld);
   }, [from, firstHeld]);
 
-  const fromCoin = from ? COIN_BY_ID[from] : undefined;
-  const toCoin = COIN_BY_ID[to];
+  const fromCoin = from ? byId[from] : undefined;
+  const toCoin = byId[to] ?? byId.BTC;
   const balance = from ? (active.holdings[from] ?? 0) : 0;
   const amount = parseAmount(amountStr);
   const fromPrice = from ? prices[from]?.price : undefined;

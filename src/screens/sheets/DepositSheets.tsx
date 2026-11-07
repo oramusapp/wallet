@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CASH_COIN, COIN_BY_ID, isCash, type CoinId } from '../../config/coins';
+import { CASH_COIN, isCash, type CoinId } from '../../config/coins';
 import { CoinPicker } from '../../components/CoinPicker';
 import { Button, CoinIcon, Icon, SheetHeader } from '../../components/ui';
 import { parseAmount, sanitizeAmountInput } from '../../lib/amount';
@@ -43,12 +43,12 @@ export function DepositSheet() {
 export function ReceiveSheet({ initialCoin }: { initialCoin?: CoinId }) {
   const nav = useNav();
   const { dispatch } = useWallet();
-  const { prices } = usePrices();
+  const { prices, byId } = usePrices();
   const [coinId, setCoinId] = useState<CoinId | undefined>(initialCoin);
   const [picking, setPicking] = useState(!initialCoin);
   const [amountStr, setAmountStr] = useState('');
   const [done, setDone] = useState(false);
-  const coin = coinId ? COIN_BY_ID[coinId] : undefined;
+  const coin = coinId ? byId[coinId] : undefined;
   const price = coinId ? prices[coinId]?.price : undefined;
   const amount = parseAmount(amountStr);
   const cash = coinId ? isCash(coinId) : false;

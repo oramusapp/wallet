@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CHAINS, COIN_BY_ID, COINS, isCash, type CoinId } from '../../config/coins';
+import { isCash, type CoinId } from '../../config/coins';
 import { Button, Chip, CoinIcon, Icon, SearchField, SheetHeader } from '../../components/ui';
 import { checkAddress, parseAmount, sanitizeAmountInput } from '../../lib/amount';
 import { fmtAmount, fmtUsd, shortAddress, toInputString } from '../../lib/format';
@@ -12,7 +12,7 @@ type Step = 'pick' | 'form' | 'review' | 'done';
 export function SendSheet({ initialCoin }: { initialCoin?: CoinId }) {
   const nav = useNav();
   const { active, dispatch } = useWallet();
-  const { prices } = usePrices();
+  const { prices, coins, byId } = usePrices();
   const [step, setStep] = useState<Step>(initialCoin ? 'form' : 'pick');
   const [coinId, setCoinId] = useState<CoinId | undefined>(initialCoin);
   const [q, setQ] = useState('');
@@ -23,15 +23,16 @@ export function SendSheet({ initialCoin }: { initialCoin?: CoinId }) {
 
   const assets = useMemo(() => {
     const s = q.trim().toLowerCase();
-    const held = COINS.filter((c) => (active.holdings[c.id] ?? 0) > 0);
+    const held = coins.filter((c) => (active.holdings[c.id] ?? 0) > 0);
     // Cash (stablecoins) first, like the reference
     held.sort((a, b) => Number(isCash(b.id)) - Number(isCash(a.id)));
     return held
       .filter((c) => chain === 'All' || c.chain === chain)
       .filter((c) => !s || c.symbol.toLowerCase().includes(s) || c.name.toLowerCase().includes(s) || (isCash(c.id) && 'cash'.includes(s)));
-  }, [q, chain, active.holdings]);
+  }, [q, chain, active.holdings, coins]);
+  const chains = useMemo(() => Array.from(new Set(coins.filter((c) => (active.holdings[c.id] ?? 0) > 0).map((c) => c.chain))), [coins, active.holdings]);
 
-  const coin = coinId ? COIN_BY_ID[coinId] : undefined;
+  const coin = coinId ? byId[coinId] : undefined;
   const balance = coinId ? (active.holdings[coinId] ?? 0) : 0;
   const price = coinId ? prices[coinId]?.price : undefined;
   const amount = parseAmount(amountStr);
@@ -55,7 +56,7 @@ export function SendSheet({ initialCoin }: { initialCoin?: CoinId }) {
             <SearchField value={q} onChange={setQ} />
           </div>
           <div className="chips pad-x">
-            {['All', ...CHAINS].map((c) => (
+            {['All', ...chains].map((c) => (
               <Chip key={c} active={chain === c} onClick={() => setChain(c)}>
                 {c}
               </Chip>

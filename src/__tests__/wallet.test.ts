@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { checkAddress, parseAmount, quoteSwap, sanitizeAmountInput } from '../lib/amount';
+import { CURATED_COINS } from '../config/coins';
 import { positions, totals } from '../lib/portfolio';
 import { initialState, reducer } from '../state/wallet';
 
@@ -44,6 +45,7 @@ describe('portfolio', () => {
         SOL: { price: 89.85, prevDayPrice: 90.308, change24h: 0, volume24h: 0 },
         ETH: { price: 2244.1, prevDayPrice: 2240.4, change24h: 0, volume24h: 0 },
       },
+      CURATED_COINS,
     );
     const t = totals(list);
     expect(t.value).toBeCloseTo(0.00581 * 89.85 + 0.0000089 * 2244.1, 10);
