@@ -85,3 +85,13 @@ export function deriveAccount(seed: Uint8Array, chain: ChainDef, network: Networ
 export function deriveAll(seed: Uint8Array, network: Network): DerivedAccount[] {
   return CHAINS.map((c) => deriveAccount(seed, c, network));
 }
+
+/** secp256k1 private key for signing. The caller MUST wipe it (`.fill(0)`) right after use. */
+export function deriveSecpPrivateKey(seed: Uint8Array, chain: ChainDef, network: Network): Uint8Array {
+  if (chain.curve !== 'secp256k1') throw new Error('Not a secp256k1 chain');
+  const node = HDKey.fromMasterSeed(seed).derive(chain.path[network]);
+  const pk = node.privateKey ? new Uint8Array(node.privateKey) : null;
+  node.wipePrivateData();
+  if (!pk) throw new Error('Derivation failed');
+  return pk;
+}

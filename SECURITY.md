@@ -19,13 +19,22 @@ Na start jeden użytkownik (autor), bez sklepu. Faza 1: tylko testnet.
 6. **Blokada aplikacji** biometrią przy starcie i po 30 s w tle. Ekran z 24 słowami zamyka się po 60 s i przy wyjściu z aplikacji.
 7. **Losowość** do nowego portfela: `expo-crypto` (SecureRandom systemu), 256 bitów, z odrzuceniem oczywiście zepsutych wyników.
 8. **Telefon bez blokady ekranu i biometrii — portfel nie startuje.**
-9. **Minimum uprawnień.** Zablokowane: aparat, mikrofon, pamięć, nakładki. Internet zostaje (salda i wysyłka od kolejnej fazy).
+9. **Minimum uprawnień.** Zablokowane: aparat, mikrofon, pamięć, nakładki. Internet tylko do węzłów sieci (salda, opłaty, wysyłka).
 10. **Brak analityki, logów i serwera.** Aplikacja łączy się tylko z węzłami sieci blockchain.
 11. **Zależności:** dokładne wersje (bez `^`), `package-lock.json`, nowe wersje dopiero po 14 dniach od publikacji
     (`npm install --before=<data>`), żeby nie złapać świeżo przejętej paczki.
 12. **Podpis APK.** Faza 1 (testnet): domyślny klucz debug z szablonu Expo — wystarczy do testów, ale jest publiczny.
     **Przed mainnetem:** prywatny klucz podpisu w GitHub Secrets, odcisk certyfikatu zapisany przez autora;
     akcje GitHub przypięte do konkretnych commitów.
+
+## Wysyłka (faza 2)
+- Podgląd przed podpisem: odbiorca, kwota, opłata maksymalna, razem. Podgląd wygasa po 60 s.
+- Adres EVM sprawdzany z sumą kontrolną EIP-55; adres BTC dekodowany dla właściwej sieci (testnet nie przyjmie adresu mainnet).
+- Węzeł EVM musi zwrócić oczekiwany chainId, inaczej przerywamy.
+- Klucz prywatny: odcisk palca → seed → klucz tylko dla tej sieci → podpis → wyczyszczenie. Wysyłka do sieci po wyczyszczeniu klucza.
+- BTC: plan transakcji liczony ponownie przy podpisie; jeśli opłata różni się od podglądu, podpis jest odrzucany.
+- Kwoty jako liczby całkowite (bigint), bez ułamków zmiennoprzecinkowych.
+- Słów nie da się wkleić ze schowka przy przywracaniu (inne aplikacje mogą czytać schowek).
 
 ## Zanim wejdą prawdziwe środki (mainnet)
 - Wysyłka przetestowana na testnecie w każdej sieci, podgląd transakcji (komu, ile, opłata) przed podpisem.

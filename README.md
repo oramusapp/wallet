@@ -3,7 +3,11 @@
 Natywny portfel kryptowalut (non-custodial) na Androida, React Native + Expo SDK 58.
 Klucz powstaje na telefonie i zostaje w bezpiecznym magazynie (Android Keystore + biometria).
 
-**Stan: faza 1, tylko testnet.** Tworzenie i import 24 słów, adresy dla grup A, B i C. Salda i wysyłka — kolejne fazy.
+**Stan: faza 2, tylko testnet.**
+- Tworzenie i przywracanie 24 słów, adresy grup A, B, C (zgodne z Trust Wallet).
+- Salda: ETH (Sepolia, Arbitrum Sepolia, Base Sepolia), konto Hyperliquid testnet (USDC), BTC testnet4, SOL devnet, SUI, APT, NEAR, XLM, ALGO testnet.
+- Wysyłka z podglądem opłaty i potwierdzeniem odciskiem palca: ETH (3 sieci testowe) i BTC testnet4.
+- Odbiór z kodem QR. LTC, DOGE, DASH, ZEC: na razie tylko adres.
 Zasady bezpieczeństwa: [SECURITY.md](SECURITY.md). Sieci i coiny: [CHAINS.md](CHAINS.md).
 
 ## Instalacja na telefonie (Android)
@@ -15,14 +19,20 @@ Zasady bezpieczeństwa: [SECURITY.md](SECURITY.md). Sieci i coiny: [CHAINS.md](C
 ## Rozwój
 ```bash
 npm ci
-npm test          # wektory adresów (zgodność z Trust Wallet), SLIP-0010, BIP39
+npm test          # wektory adresów (Trust Wallet), SLIP-0010, BIP39, kwoty, podpis EVM i BTC
+LIVE=1 NODE_USE_ENV_PROXY=1 npx vitest run   # salda i podgląd opłat na prawdziwych węzłach testnet
 npm run typecheck
 npx expo prebuild --platform android && cd android && ./gradlew assembleRelease   # wymaga Android SDK + JDK 17
 ```
 
 ## Struktura
 ```
-App.tsx                 ekrany: start, tworzenie/sprawdzenie/import słów, blokada, adresy, podgląd słów
+App.tsx                 nawigacja: start, blokada, zakładki Portfel / Odbierz / Wyślij / Ustawienia
+src/ui/                 ekrany (kit.tsx = wspólny wygląd, QR.tsx = kod QR bez dodatkowych modułów natywnych)
+src/net/assets.ts       aktywa, sieci testowe, węzły
+src/net/balances.ts     salda
+src/net/send/evm.ts     przelew ETH (EIP-1559), podpis @noble
+src/net/send/btc.ts     przelew BTC (P2WPKH) przez @scure/btc-signer
 src/vault.ts            jedyne miejsce z dostępem do słów (SecureStore + biometria)
 src/wallet/mnemonic.ts  BIP39
 src/wallet/slip10.ts    SLIP-0010 (ed25519)

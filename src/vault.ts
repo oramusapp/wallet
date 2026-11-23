@@ -4,7 +4,8 @@
 // If new biometrics are enrolled, Android invalidates that key: the words must then be restored from paper.
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { deriveAll, type DerivedAccount } from './wallet/derive';
+import { deriveAll, deriveSecpPrivateKey, type DerivedAccount } from './wallet/derive';
+import { CHAINS } from './wallet/chains';
 import { isValidMnemonic, normalizeMnemonic, seedFromMnemonic } from './wallet/mnemonic';
 
 const K_MNEMONIC = 'wallet.mnemonic.v1';
@@ -69,4 +70,20 @@ export async function unlockApp(): Promise<boolean> {
 export async function wipeWallet(): Promise<void> {
   await SecureStore.deleteItemAsync(K_MNEMONIC, SECRET_OPTS);
   await SecureStore.deleteItemAsync(K_ACCOUNTS, PUBLIC_OPTS);
+}
+
+/**
+ * Signing: one biometric prompt -> seed -> secp256k1 key for `chainId` -> fn(key) -> everything wiped.
+ * The words themselves are a JS string and cannot be wiped; they are dropped right away.
+ */
+export async function withSecpKey<T>(chainId: string, network: 'testnet' | 'mainnet', fn: (key: Uint8Array) => T | Promise<T>): Promise<T> {
+  const chain = CHAINS.find((c) => c.id === chainId);
+  if (!chain) throw new Error('Nieznana sieć');
+  let m: string | null = await revealMnemonic();
+  const seed = seedFromMnemonic(m);
+  m = null;
+  const key = deriveSecpPrivateKey(seed, chain, network);
+  seed.fill(0);
+  try { return await fn(key); }
+  finally { key.fill(0); }
 }
