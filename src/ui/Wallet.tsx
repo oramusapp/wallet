@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Linking, Pressable, RefreshControl, ScrollView, Share, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, Share, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ASSETS, type Asset } from '../net/assets';
 import { formatAmount } from '../net/units';
+import { getLimits, type Limits } from '../net/limits';
 import { Btn, C, Card, Chip, CoinIcon, KV, Note, P, Screen } from './kit';
 import { QR } from './QR';
 
@@ -80,6 +81,7 @@ export function AssetDetail({ a, b, address, onBack, onSend, onReceive }: { a: A
       {b?.err && b.v === undefined ? <Note tone="danger">Nie udało się pobrać salda: {b.err}</Note> : null}
       {a.note ? <Note tone="info">{a.note}</Note> : null}
       {!a.canSend && a.kind !== 'none' ? <Note tone="info">Wysyłka z tej sieci będzie w kolejnym etapie. Odbiór działa.</Note> : null}
+      {a.kind !== 'none' ? <LimitsCard a={a} address={address} /> : null}
       <Card>
         <KV k="Twój adres" v={address} mono />
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
@@ -107,6 +109,7 @@ export function Receive({ assets, accountFor, initial, onBack }: { assets: Asset
       <Text selectable style={{ color: C.ink, fontFamily: 'monospace', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 14 }}>{addr}</Text>
       <Note>Wysyłaj tu tylko {a.symbol} w sieci {a.network}. Inna sieć = ryzyko utraty środków.</Note>
       {a.chainId === 'evm' ? <P muted>Ten sam adres działa na wszystkich sieciach EVM (Ethereum, Arbitrum, Base, BNB, Avalanche, HyperEVM…).</P> : null}
+      {a.kind !== 'none' ? <LimitsCard a={a} address={addr} /> : null}
     </Screen>
   );
 }
@@ -125,5 +128,18 @@ export function AssetPicker({ assets, value, onChange }: { assets: Asset[]; valu
         );
       })}
     </ScrollView>
+  );
+}
+
+export function LimitsCard({ a, address }: { a: Asset; address: string }) {
+  const [lim, setLim] = useState<Limits | null>(null);
+  const [err, setErr] = useState('');
+  useEffect(() => { let live = true; getLimits(a, address).then((l) => live && setLim(l), (e) => live && setErr((e as Error).message)); return () => { live = false; }; }, [a.id, address]);
+  return (
+    <Card>
+      <Text style={{ color: C.ink, fontWeight: '800', fontSize: 15, marginBottom: 6 }}>Minimum, rezerwa i opłata (na żywo z sieci)</Text>
+      {lim ? (lim.lines.length ? lim.lines.map((l) => <Text key={l} style={{ color: C.ink2, fontSize: 14, lineHeight: 20, marginBottom: 4 }}>• {l}</Text>) : <Text style={{ color: C.muted }}>Brak danych dla tej sieci.</Text>)
+        : err ? <Text style={{ color: C.danger }}>Nie udało się pobrać: {err}</Text> : <ActivityIndicator color={C.accent} style={{ alignSelf: 'flex-start' }} />}
+    </Card>
   );
 }

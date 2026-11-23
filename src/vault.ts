@@ -4,7 +4,7 @@
 // If new biometrics are enrolled, Android invalidates that key: the words must then be restored from paper.
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { deriveAll, deriveSecpPrivateKey, type DerivedAccount } from './wallet/derive';
+import { deriveAll, deriveEdPrivateKey, deriveSecpPrivateKey, type DerivedAccount } from './wallet/derive';
 import { CHAINS } from './wallet/chains';
 import { isValidMnemonic, normalizeMnemonic, seedFromMnemonic } from './wallet/mnemonic';
 
@@ -86,4 +86,29 @@ export async function withSecpKey<T>(chainId: string, network: 'testnet' | 'main
   seed.fill(0);
   try { return await fn(key); }
   finally { key.fill(0); }
+}
+
+/** Same as withSecpKey, for ed25519 chains (Solana and others). */
+export async function withEdKey<T>(chainId: string, network: 'testnet' | 'mainnet', fn: (key: Uint8Array) => T | Promise<T>): Promise<T> {
+  const chain = CHAINS.find((c) => c.id === chainId);
+  if (!chain) throw new Error('Nieznana sieć');
+  let m: string | null = await revealMnemonic();
+  const seed = seedFromMnemonic(m);
+  m = null;
+  const key = deriveEdPrivateKey(seed, chain, network);
+  seed.fill(0);
+  try { return await fn(key); }
+  finally { key.fill(0); }
+}
+
+// ---------- recipients you already sent to (public data, used for "new address" checks) ----------
+const K_RECIPIENTS = 'wallet.recipients.v1';
+export async function loadRecipients(): Promise<Record<string, string[]>> {
+  try { return JSON.parse((await SecureStore.getItemAsync(K_RECIPIENTS, PUBLIC_OPTS)) || '{}'); } catch { return {}; }
+}
+export async function rememberRecipient(assetId: string, address: string): Promise<void> {
+  const all = await loadRecipients();
+  const list = all[assetId] ?? [];
+  if (!list.includes(address)) all[assetId] = [address, ...list].slice(0, 50);
+  await SecureStore.setItemAsync(K_RECIPIENTS, JSON.stringify(all), PUBLIC_OPTS);
 }

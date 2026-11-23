@@ -95,3 +95,11 @@ export function deriveSecpPrivateKey(seed: Uint8Array, chain: ChainDef, network:
   if (!pk) throw new Error('Derivation failed');
   return pk;
 }
+
+/** ed25519 private key (32-byte seed) for signing. The caller MUST wipe it right after use. */
+export function deriveEdPrivateKey(seed: Uint8Array, chain: ChainDef, network: Network): Uint8Array {
+  if (chain.curve !== 'ed25519') throw new Error('Not an ed25519 chain');
+  const n = ed25519DerivePath(seed, chain.path[network]);
+  n.chainCode.fill(0);
+  return n.key;
+}

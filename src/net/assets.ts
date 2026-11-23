@@ -14,6 +14,8 @@ export interface Asset {
   /** JSON-RPC / REST base for balances and sending. */
   rpc?: string;
   evmChainId?: number;
+  /** OP-stack chain (Base, Optimism): an extra L1 data fee is charged on top of gas × price. */
+  opStack?: boolean;
   explorerTx?: (hash: string) => string;
   explorerAddr?: (addr: string) => string;
   canSend: boolean;
@@ -29,7 +31,7 @@ export const ASSETS: Asset[] = [
     rpc: 'https://sepolia-rollup.arbitrum.io/rpc', evmChainId: 421614, canSend: true,
     explorerTx: (h) => 'https://sepolia.arbiscan.io/tx/' + h, explorerAddr: (a) => 'https://sepolia.arbiscan.io/address/' + a },
   { id: 'eth-base-sepolia', symbol: 'ETH', name: 'Ethereum', chainId: 'evm', network: 'Base Sepolia', decimals: 18, kind: 'evm', color: '#3b6cff',
-    rpc: 'https://sepolia.base.org', evmChainId: 84532, canSend: true,
+    rpc: 'https://sepolia.base.org', evmChainId: 84532, canSend: true, opStack: true,
     explorerTx: (h) => 'https://sepolia.basescan.org/tx/' + h, explorerAddr: (a) => 'https://sepolia.basescan.org/address/' + a },
   { id: 'usdc-hl', symbol: 'USDC', name: 'Konto Hyperliquid', chainId: 'evm', network: 'Hyperliquid testnet', decimals: 6, kind: 'hl', color: '#50e3c2',
     rpc: 'https://api.hyperliquid-testnet.xyz/info', canSend: false, explorerAddr: (a) => 'https://app.hyperliquid-testnet.xyz/explorer/address/' + a,
@@ -38,7 +40,7 @@ export const ASSETS: Asset[] = [
     rpc: 'https://mempool.space/testnet4/api', canSend: true,
     explorerTx: (h) => 'https://mempool.space/testnet4/tx/' + h, explorerAddr: (a) => 'https://mempool.space/testnet4/address/' + a, faucet: 'https://mempool.space/testnet4/faucet' },
   { id: 'sol-devnet', symbol: 'SOL', name: 'Solana', chainId: 'sol', network: 'Devnet', decimals: 9, kind: 'sol', color: '#9945ff',
-    rpc: 'https://api.devnet.solana.com', canSend: false, explorerAddr: (a) => 'https://explorer.solana.com/address/' + a + '?cluster=devnet', faucet: 'https://faucet.solana.com' },
+    rpc: 'https://api.devnet.solana.com', canSend: true, explorerTx: (h) => 'https://explorer.solana.com/tx/' + h + '?cluster=devnet', explorerAddr: (a) => 'https://explorer.solana.com/address/' + a + '?cluster=devnet', faucet: 'https://faucet.solana.com' },
   { id: 'sui-testnet', symbol: 'SUI', name: 'Sui', chainId: 'sui', network: 'Testnet', decimals: 9, kind: 'sui', color: '#4da2ff',
     rpc: 'https://graphql.testnet.sui.io/graphql', canSend: false, explorerAddr: (a) => 'https://suiscan.xyz/testnet/account/' + a },
   { id: 'apt-testnet', symbol: 'APT', name: 'Aptos', chainId: 'apt', network: 'Testnet', decimals: 8, kind: 'apt', color: '#2ed8a3',

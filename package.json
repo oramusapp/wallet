@@ -30,6 +30,7 @@
     "viem": "2.57.17"
   },
   "devDependencies": {
+    "@solana/web3.js": "1.99.0",
     "@types/react": "19.3.0",
     "typescript": "6.0.3",
     "vitest": "5.1.0"

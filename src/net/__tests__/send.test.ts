@@ -42,7 +42,7 @@ describe('EVM', () => {
   it('signs a tx that recovers to our address on the right chain', async () => {
     const asset = assetById('eth-sepolia')!;
     const from = deriveAccount(seed, evmChain, 'testnet').address;
-    const q: EvmQuote = { to: '0x000000000000000000000000000000000000dEaD', value: 10n ** 15n, nonce: 7, gas: 21000n, maxFeePerGas: 3_000_000_000n, maxPriorityFeePerGas: 1_000_000_000n, maxFee: 0n, balance: 0n };
+    const q: EvmQuote = { to: '0x000000000000000000000000000000000000dEaD', value: 10n ** 15n, nonce: 7, gas: 21000n, maxFeePerGas: 3_000_000_000n, maxPriorityFeePerGas: 1_000_000_000n, maxFee: 0n, fee: 0n, l1Fee: 0n, balance: 0n };
     const pk = deriveSecpPrivateKey(seed, evmChain, 'testnet');
     const raw = signEvm(asset, q, pk);
     pk.fill(0);

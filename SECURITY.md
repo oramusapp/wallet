@@ -36,6 +36,15 @@ Na start jeden użytkownik (autor), bez sklepu. Faza 1: tylko testnet.
 - Kwoty jako liczby całkowite (bigint), bez ułamków zmiennoprzecinkowych.
 - Słów nie da się wkleić ze schowka przy przywracaniu (inne aplikacje mogą czytać schowek).
 
+## Ochrona przed pomyłką (faza 3)
+- **Nowy adres:** przy pierwszej wysyłce na adres trzeba wpisać jego 4 ostatnie znaki (z miejsca, skąd adres pochodzi). Bez tego przycisk jest nieaktywny.
+- **Podobny adres (address poisoning):** jeśli adres ma ten sam początek i koniec co adres, na który już wysyłałeś, ale inny środek — czerwone ostrzeżenie i osobne potwierdzenie.
+- **Adres w grupach po 4 znaki**, pierwsze i ostatnie grupy wyróżnione.
+- **Podsumowanie:** odbiorca otrzyma, opłata (maks. i zwykle), razem, saldo po wysłaniu. Ostrzeżenie, gdy opłata ≥ 10% kwoty albo wysyłka ≥ 50% salda.
+- **Minimum i rezerwy czytane na żywo z sieci:** BTC 546 sat, Solana — rezerwa konta (`getMinimumBalanceForRentExemption`), Stellar — 2 × base reserve, Algorand — `min-balance` konta, Hyperliquid — wpłata min. 5 USDC (dokumentacja). Kwota poniżej minimum blokuje przycisk.
+- **Opłata (gas):** liczona z bieżącego bloku; na Base (OP stack) doliczana opłata L1 z kontraktu GasPriceOracle.
+- Lista odbiorców (adresy publiczne) zapisuje się na telefonie dopiero po udanej wysyłce.
+
 ## Zanim wejdą prawdziwe środki (mainnet)
 - Wysyłka przetestowana na testnecie w każdej sieci, podgląd transakcji (komu, ile, opłata) przed podpisem.
 - Prywatny klucz podpisu APK (pkt 12).

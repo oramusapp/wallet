@@ -2,7 +2,7 @@
 // so the private key never becomes a JS string and can be wiped after use.
 import { secp256k1 } from '@noble/curves/secp256k1.js';
 import { bytesToHex } from '@noble/hashes/utils.js';
-import { getAddress, isAddress, keccak256, serializeTransaction, type Hex, type TransactionSerializableEIP1559 } from 'viem';
+import { encodeFunctionData, getAddress, isAddress, keccak256, serializeTransaction, type Hex, type TransactionSerializableEIP1559 } from 'viem';
 import type { Asset } from '../assets';
 import { jsonRpc } from '../balances';
 import { formatAmount } from '../units';
@@ -16,8 +16,12 @@ export interface EvmQuote {
   gas: bigint;
   maxFeePerGas: bigint;
   maxPriorityFeePerGas: bigint;
-  /** Worst-case fee: gas * maxFeePerGas. */
+  /** Worst-case fee: gas * maxFeePerGas + L1 data fee (OP-stack). */
   maxFee: bigint;
+  /** Expected fee at the current base fee. */
+  fee: bigint;
+  /** OP-stack L1 data fee included in fee/maxFee (0 elsewhere). */
+  l1Fee: bigint;
   balance: bigint;
 }
 
@@ -53,7 +57,9 @@ export async function quoteEvm(asset: Asset, from: string, toRaw: string, value:
   const maxFeePerGas = base * 2n + tip; // room for two full blocks of base-fee growth
   const gas = (BigInt(gasHex) * 12n + 9n) / 10n; // +20% headroom; unused gas is not charged
   const balance = BigInt(balHex);
-  return { to, value, nonce: Number(BigInt(nonceHex)), gas, maxFeePerGas, maxPriorityFeePerGas: tip, maxFee: gas * maxFeePerGas, balance };
+  const nonce = Number(BigInt(nonceHex));
+  const l1Fee = asset.opStack ? await opStackL1Fee(asset, { type: 'eip1559', chainId: asset.evmChainId!, nonce, to, value, gas, maxFeePerGas, maxPriorityFeePerGas: tip }) : 0n;
+  return { to, value, nonce, gas, maxFeePerGas, maxPriorityFeePerGas: tip, maxFee: gas * maxFeePerGas + l1Fee, fee: gas * (base + tip) + l1Fee, l1Fee, balance };
 }
 
 export function signEvm(asset: Asset, q: EvmQuote, privateKey: Uint8Array): Hex {
@@ -67,6 +73,16 @@ export function signEvm(asset: Asset, q: EvmQuote, privateKey: Uint8Array): Hex 
   const r = ('0x' + bytesToHex(sig.slice(1, 33))) as Hex;
   const s = ('0x' + bytesToHex(sig.slice(33, 65))) as Hex;
   return serializeTransaction(tx, { r, s, yParity: sig[0] });
+}
+
+const GAS_PRICE_ORACLE = '0x420000000000000000000000000000000000000F';
+const ORACLE_ABI = [{ type: 'function', name: 'getL1Fee', stateMutability: 'view', inputs: [{ name: '_data', type: 'bytes' }], outputs: [{ type: 'uint256' }] }] as const;
+
+/** L1 data fee on OP-stack chains, from the chain's own GasPriceOracle (+10% headroom). */
+export async function opStackL1Fee(asset: Asset, tx: TransactionSerializableEIP1559): Promise<bigint> {
+  const data = encodeFunctionData({ abi: ORACLE_ABI, functionName: 'getL1Fee', args: [serializeTransaction(tx)] });
+  const r = await jsonRpc<string>(asset.rpc!, 'eth_call', [{ to: GAS_PRICE_ORACLE, data }, 'latest']);
+  return (BigInt(r) * 11n + 9n) / 10n;
 }
 
 export async function broadcastEvm(asset: Asset, raw: Hex): Promise<string> {
