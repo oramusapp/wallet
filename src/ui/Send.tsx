@@ -10,11 +10,13 @@ import { broadcastBtc, checkBtcAddress, quoteBtc, signBtc, type BtcQuote } from 
 import { broadcastSol, checkSolAddress, quoteSol, signSol, type SolQuote } from '../net/send/sol';
 import { broadcastXlm, decodeStellarAddress, quoteXlm, signXlm, type XlmQuote } from '../net/send/xlm';
 import { broadcastAlgo, decodeAlgoAddress, quoteAlgo, signAlgo, type AlgoQuote } from '../net/send/algo';
+import { broadcastApt, checkAptAddress, quoteApt, signApt, type AptQuote } from '../net/send/apt';
+import { broadcastNear, checkNearAccount, quoteNear, signNear, type NearQuote } from '../net/send/near';
 import { loadRecipients, rememberRecipient, withEdKey, withSecpKey } from '../vault';
 import { Btn, C, Card, Chip, CoinIcon, Field, KV, Note, Screen } from './kit';
 import { AssetPicker, balText, type Bals } from './Wallet';
 
-type Quote = { kind: 'evm'; q: EvmQuote } | { kind: 'btc'; q: BtcQuote } | { kind: 'sol'; q: SolQuote } | { kind: 'xlm'; q: XlmQuote } | { kind: 'algo'; q: AlgoQuote };
+type Quote = { kind: 'evm'; q: EvmQuote } | { kind: 'btc'; q: BtcQuote } | { kind: 'sol'; q: SolQuote } | { kind: 'xlm'; q: XlmQuote } | { kind: 'algo'; q: AlgoQuote } | { kind: 'apt'; q: AptQuote } | { kind: 'near'; q: NearQuote };
 type Step = { k: 'form' } | { k: 'confirm'; quote: Quote; at: number } | { k: 'done'; hash: string; quote: Quote };
 const QUOTE_TTL_MS = 60_000;
 
@@ -24,10 +26,12 @@ function checkAddress(a: Asset, to: string): string {
   if (a.kind === 'sol') return checkSolAddress(to);
   if (a.kind === 'xlm') { decodeStellarAddress(to); return to.trim(); }
   if (a.kind === 'algo') { decodeAlgoAddress(to); return to.trim(); }
+  if (a.kind === 'apt') { checkAptAddress(to); return to.trim().toLowerCase(); }
+  if (a.kind === 'near') return checkNearAccount(to);
   throw new Error('Wysyłka z tej sieci jeszcze nie działa.');
 }
 const feeOf = (q: Quote) => (q.kind === 'evm' ? q.q.maxFee : q.q.fee);
-const caseless = (a: Asset) => a.kind === 'evm' || a.kind === 'erc20';
+const caseless = (a: Asset) => a.kind === 'evm' || a.kind === 'erc20' || a.kind === 'apt';
 
 export function Send({ assets, initial, bals, accountFor, pubkeyFor, onBack, onSent }: {
   assets: Asset[]; initial?: Asset; bals: Bals; accountFor: (a: Asset) => string; pubkeyFor: (a: Asset) => string; onBack?: () => void; onSent: () => void;
@@ -80,7 +84,7 @@ export function Send({ assets, initial, bals, accountFor, pubkeyFor, onBack, onS
   const max = () => {
     if (bal === undefined || !lim) return;
     const fee = a.kind === 'erc20' ? 0n : lim.feeMax ?? lim.fee ?? 0n; // token fee is paid in ETH
-    const keep = a.kind === 'xlm' || a.kind === 'algo' ? lim.reserve : 0n; // these networks require a reserve to stay
+    const keep = a.kind === 'xlm' || a.kind === 'algo' || a.kind === 'near' ? lim.reserve : 0n; // these networks require a reserve to stay
     const v = bal - fee - keep;
     if (v <= 0n) { setErr({ ...err, amt: 'Saldo nie pokrywa opłaty.' }); return; }
     setAmt(formatAmount(v, a.decimals, a.decimals));
@@ -102,6 +106,8 @@ export function Send({ assets, initial, bals, accountFor, pubkeyFor, onBack, onS
       else if (a.kind === 'sol') quote = { kind: 'sol', q: await quoteSol(a, from, to, v) };
       else if (a.kind === 'xlm') quote = { kind: 'xlm', q: await quoteXlm(a, from, to, v, memo.trim()) };
       else if (a.kind === 'algo') quote = { kind: 'algo', q: await quoteAlgo(a, from, to, v) };
+      else if (a.kind === 'apt') quote = { kind: 'apt', q: await quoteApt(a, from, to, v) };
+      else if (a.kind === 'near') quote = { kind: 'near', q: await quoteNear(a, from, pubkeyFor(a), to, v) };
       else throw new Error('Wysyłka z tej sieci jeszcze nie działa.');
       setLast4(''); setAckSimilar(false);
       setStep({ k: 'confirm', quote, at: Date.now() }); setNow(Date.now());
@@ -125,9 +131,15 @@ export function Send({ assets, initial, bals, accountFor, pubkeyFor, onBack, onS
       } else if (quote.kind === 'xlm') {
         const env = await withEdKey(a.chainId, 'testnet', (k) => signXlm(quote.q.tx, k));
         hash = await broadcastXlm(a, env);
-      } else {
+      } else if (quote.kind === 'algo') {
         const blob = await withEdKey(a.chainId, 'testnet', (k) => signAlgo(quote.q.tx, k));
         hash = await broadcastAlgo(a, blob);
+      } else if (quote.kind === 'apt') {
+        const tx = await withEdKey(a.chainId, 'testnet', (k) => signApt(quote.q.tx, k));
+        hash = await broadcastApt(a, tx);
+      } else {
+        const signed = await withEdKey(a.chainId, 'testnet', (k) => signNear(quote.q.tx, k));
+        hash = (await broadcastNear(a, signed.b64)) || signed.hash;
       }
       await rememberRecipient(a.id, quote.q.to).catch(() => {});
       setStep({ k: 'done', hash, quote }); onSent();
@@ -203,7 +215,7 @@ export function Send({ assets, initial, bals, accountFor, pubkeyFor, onBack, onS
 
         <Card>
           <KV k="Odbiorca otrzyma" v={f(value) + ' ' + a.symbol} />
-          <KV k={qq.kind === 'evm' ? 'Opłata sieci (gas), maksymalnie' : qq.kind === 'btc' ? 'Opłata sieci (' + qq.q.feeRate + ' sat/vB)' : 'Opłata sieci'} v={ff(fee) + ' ' + feeSym + (qq.kind === 'evm' ? '\nzwykle ' + ff(qq.q.fee) + (qq.q.l1Fee ? ' (w tym L1 ' + ff(qq.q.l1Fee) + ')' : '') : '')} />
+          <KV k={qq.kind === 'evm' ? 'Opłata sieci (gas), maksymalnie' : qq.kind === 'btc' ? 'Opłata sieci (' + qq.q.feeRate + ' sat/vB)' : qq.kind === 'apt' || qq.kind === 'near' ? 'Opłata sieci, maksymalnie (zwykle mniej)' : 'Opłata sieci'} v={ff(fee) + ' ' + feeSym + (qq.kind === 'evm' ? '\nzwykle ' + ff(qq.q.fee) + (qq.q.l1Fee ? ' (w tym L1 ' + ff(qq.q.l1Fee) + ')' : '') : '')} />
           <KV k="Razem z Twojego konta" v={sameUnit ? f(total) + ' ' + a.symbol : f(value) + ' ' + a.symbol + '  +  ' + ff(fee) + ' ' + feeSym + ' (opłata)'} strong />
           <KV k="Saldo po wysłaniu (co najmniej)" v={f(after) + ' ' + a.symbol + (nativeAfter !== null ? '\n' + ff(nativeAfter) + ' ' + feeSym : '')} />
         </Card>
@@ -213,6 +225,9 @@ export function Send({ assets, initial, bals, accountFor, pubkeyFor, onBack, onS
         {share >= 50 ? <Note>Wysyłasz {share}% salda tej sieci.</Note> : null}
         {qq.kind === 'xlm' ? <Card><KV k="Memo" v={qq.q.memo ? qq.q.memo : 'brak'} /></Card> : null}
         {qq.kind === 'xlm' && !qq.q.memo ? <Note>Bez memo. Jeśli to adres giełdy, wróć i dodaj memo — inaczej wpłata może nie zostać przypisana.</Note> : null}
+        {qq.kind === 'apt' && qq.q.recipientNew ? <Note tone="info">Konto odbiorcy jeszcze nie istnieje — transfer je utworzy (opłata będzie nieco wyższa, mieści się w maksimum).</Note> : null}
+        {qq.kind === 'near' ? <Text style={{ color: C.muted, marginBottom: 10 }}>Na Twoim koncie zostaje rezerwa na przechowywanie danych: {formatAmount(qq.q.reserve, 24, 6)} NEAR.</Text> : null}
+        {qq.kind === 'near' && qq.q.recipientNew ? <Note tone="info">Konto odbiorcy jeszcze nie istnieje — ta wpłata je utworzy.</Note> : null}
         {(qq.kind === 'xlm' || qq.kind === 'algo') && qq.q.recipientNew ? <Note tone="info">Konto odbiorcy jeszcze nie istnieje — ta wpłata je utworzy (minimum spełnione).</Note> : null}
         {(qq.kind === 'xlm' || qq.kind === 'algo') ? <Text style={{ color: C.muted, marginBottom: 10 }}>Na Twoim koncie zostaje wymagana rezerwa: {f(qq.q.minBalance)} {a.symbol}.</Text> : null}
         {qq.kind === 'sol' && qq.q.recipientNew ? <Note tone="info">Konto odbiorcy jest puste. Ta wpłata je utworzy (min. {f(qq.q.rentMin)} SOL — spełnione).</Note> : null}
@@ -229,7 +244,7 @@ export function Send({ assets, initial, bals, accountFor, pubkeyFor, onBack, onS
       <AssetPicker assets={assets} value={a} onChange={pick} />
       <View style={{ height: 16 }} />
       <Field label="Adres odbiorcy" value={to} onChangeText={(t) => { setTo(t); setErr({ ...err, to: undefined }); }}
-        placeholder={a.kind === 'evm' || a.kind === 'erc20' ? '0x…' : a.kind === 'btc' ? 'tb1…' : a.kind === 'xlm' ? 'G…' : a.kind === 'algo' ? 'adres Algorand' : 'adres Solana'} error={err.to ?? (toHint || null)}
+        placeholder={a.kind === 'evm' || a.kind === 'erc20' ? '0x…' : a.kind === 'btc' ? 'tb1…' : a.kind === 'xlm' ? 'G…' : a.kind === 'algo' ? 'adres Algorand' : a.kind === 'apt' ? '0x… (64 znaki)' : a.kind === 'near' ? 'konto NEAR (64 hex albo nazwa.testnet)' : 'adres Solana'} error={err.to ?? (toHint || null)}
         right={<Chip label="Wklej" onPress={async () => setTo((await Clipboard.getStringAsync()).trim())} />} />
       <Field label={'Kwota (' + a.symbol + ')'} value={amt} onChangeText={(t) => { setAmt(t); setErr({ ...err, amt: undefined }); }} keyboardType="decimal-pad" placeholder="0.00"
         error={err.amt ?? (amtHint || null)}

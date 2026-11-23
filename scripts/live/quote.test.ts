@@ -24,7 +24,7 @@ it('btc quote reaches the node (no funds -> clear error)', async () => {
 import { getLimits } from '../../src/net/limits';
 import { quoteSol } from '../../src/net/send/sol';
 import { ASSETS } from '../../src/net/assets';
-for (const a of ASSETS.filter(x => ['evm', 'btc', 'sol', 'xlm', 'algo'].includes(x.kind))) {
+for (const a of ASSETS.filter(x => ['evm', 'erc20', 'btc', 'sol', 'xlm', 'algo', 'apt', 'near'].includes(x.kind))) {
   it('limits ' + a.id, async () => {
     const from = deriveAccount(seed, CHAINS.find(c => c.id === a.chainId)!, 'testnet').address;
     const l = await getLimits(a, from);

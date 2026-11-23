@@ -55,6 +55,8 @@ XRP, TRX, ADA, DOT, FIL, ICP, INJ, TAO, GRAM, XMR — bez natywnych portfeli; ek
 | SOL | devnet | tak |
 | XLM | testnet | tak, z memo; potwierdzone prawdziwą transakcją |
 | ALGO | testnet | tak; potwierdzone prawdziwą transakcją |
-| SUI, APT, NEAR | testnet | saldo; wysyłka w kolejnym etapie |
+| APT | testnet | tak; potwierdzone prawdziwą transakcją (wersja 638712336, 52 jednostki gazu) |
+| NEAR | testnet | tak; bajty zgodne z oficjalnym SDK (publiczne konto testowe ma usunięty klucz, więc bez prawdziwej wysyłki) |
+| SUI | testnet | saldo; wysyłka w kolejnym etapie (wybór monet-obiektów do opłaty) |
 | LTC, DOGE, DASH, ZEC | — | tylko adres |
 | Konto Hyperliquid | testnet | saldo; wpłaty: stary most jest wycofany (docs: „The legacy bridge is deprecated”), zalecany Circle CCTP — do zaprojektowania |

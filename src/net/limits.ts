@@ -4,6 +4,7 @@ import { http, jsonRpc } from './balances';
 import { formatAmount } from './units';
 import { solRentMin, solTransferMessage } from './send/sol';
 import { erc20TransferData, opStackL1Fee } from './send/evm';
+import { APT_MAX_GAS } from './send/apt';
 import { base64 } from '@scure/base';
 
 export interface Limits {
@@ -88,8 +89,28 @@ export async function getLimits(asset: Asset, from: string): Promise<Limits> {
     case 'hl':
       return { minSend: HL_MIN_DEPOSIT_USDC, minNewAccount: 0n, reserve: 0n,
         lines: ['Wpłata na Hyperliquid (most z Arbitrum): min. 5 USDC — mniejsza kwota przepada (dokumentacja Hyperliquid).'] };
+    case 'apt': {
+      const r = await http(asset.rpc + '/estimate_gas_price');
+      const gp = BigInt((await r.json()).gas_estimate ?? 100);
+      const feeMax = APT_MAX_GAS * gp, fee = 60n * gp; // a plain transfer used 52 gas units on testnet (checked 23.11.2026)
+      return { minSend: 1n, minNewAccount: 0n, reserve: 0n, fee, feeMax,
+        lines: ['Brak minimalnej kwoty; transfer sam tworzy konto odbiorcy, jeśli go nie ma.', 'Opłata: zwykle ok. ' + f(fee) + ', maksymalnie ' + f(feeMax) + ' (limit ' + APT_MAX_GAS + ' jednostek gazu × ' + gp + ').'] };
+    }
+    case 'near': {
+      const rpc = asset.rpc!;
+      const [gp, cfg, me] = await Promise.all([
+        jsonRpc<{ gas_price: string }>(rpc, 'gas_price', [null]),
+        jsonRpc<{ runtime_config: { storage_amount_per_byte: string } }>(rpc, 'EXPERIMENTAL_protocol_config', { finality: 'final' }),
+        jsonRpc<{ storage_usage?: number }>(rpc, 'query', { request_type: 'view_account', finality: 'final', account_id: from }).catch(() => ({ storage_usage: undefined }))
+      ]);
+      const perByte = BigInt(cfg.runtime_config.storage_amount_per_byte);
+      const feeMax = 3_000_000_000_000n * BigInt(gp.gas_price), minNew = 182n * perByte;
+      const reserve = me.storage_usage !== undefined ? BigInt(me.storage_usage) * perByte : minNew;
+      const fn = (v: bigint) => formatAmount(v, 24, 6) + ' NEAR';
+      return { minSend: 1n, minNewAccount: minNew, reserve, fee: feeMax, feeMax,
+        lines: ['Nowe konto ukryte (64 znaki hex): pierwsza wpłata min. ok. ' + fn(minNew) + ' (opłata za przechowywanie konta).', 'Na Twoim koncie musi zostać ' + fn(reserve) + ' (przechowywanie danych konta).', 'Opłata: maks. ' + fn(feeMax) + ' (zwykle mniej; nadwyżka gazu wraca).'] };
+    }
     case 'sui':
-    case 'apt':
       return { minSend: 1n, minNewAccount: 0n, reserve: 0n, lines: ['Brak minimalnej kwoty. Opłatę płacisz w ' + asset.symbol + '.'] };
     default:
       return { minSend: 0n, minNewAccount: 0n, reserve: 0n, lines: [] };
