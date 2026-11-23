@@ -3,7 +3,7 @@ import type { Asset } from './assets';
 import { http, jsonRpc } from './balances';
 import { formatAmount } from './units';
 import { solRentMin, solTransferMessage } from './send/sol';
-import { opStackL1Fee } from './send/evm';
+import { erc20TransferData, opStackL1Fee } from './send/evm';
 import { base64 } from '@scure/base';
 
 export interface Limits {
@@ -27,12 +27,17 @@ export const HL_MIN_DEPOSIT_USDC = 5_000_000n; // 5 USDC (6 decimals) — Hyperl
 export async function getLimits(asset: Asset, from: string): Promise<Limits> {
   const f = (v: bigint) => formatAmount(v, asset.decimals, asset.decimals) + ' ' + asset.symbol;
   switch (asset.kind) {
-    case 'evm': {
+    case 'evm':
+    case 'erc20': {
       const rpc = asset.rpc!;
+      const isToken = asset.kind === 'erc20';
+      const fe = (v: bigint) => formatAmount(v, 18, 18) + ' ETH';
       const [block, tipHex, gasHex] = await Promise.all([
         jsonRpc<{ baseFeePerGas?: string }>(rpc, 'eth_getBlockByNumber', ['latest', false]),
         jsonRpc<string>(rpc, 'eth_maxPriorityFeePerGas', []).catch(() => '0x3b9aca00'),
-        jsonRpc<string>(rpc, 'eth_estimateGas', [{ from, to: from, value: '0x0' }]).catch(() => '0x5208')
+        isToken
+          ? jsonRpc<string>(rpc, 'eth_estimateGas', [{ from, to: asset.token, value: '0x0', data: erc20TransferData(from as `0x${string}`, 0n) }]).catch(() => '0xea60')
+          : jsonRpc<string>(rpc, 'eth_estimateGas', [{ from, to: from, value: '0x0' }]).catch(() => '0x5208')
       ]);
       const base = BigInt(block.baseFeePerGas ?? '0x0'), tip = BigInt(tipHex);
       const gas = (BigInt(gasHex) * 12n + 9n) / 10n;
@@ -42,7 +47,9 @@ export async function getLimits(asset: Asset, from: string): Promise<Limits> {
       }
       const fee = gas * (base + tip) + l1, feeMax = gas * (base * 2n + tip) + l1;
       return { minSend: 1n, minNewAccount: 0n, reserve: 0n, fee, feeMax, feeLabel: 'gas ' + gas + ' × ' + gwei(base + tip) + ' gwei',
-        lines: ['Sieć nie ma minimalnej kwoty.', 'Opłatę (gas) płacisz w ETH tej sieci: zwykle ' + f(fee) + ', maksymalnie ' + f(feeMax) + '.'].concat(l1 ? ['W tym opłata za zapis w Ethereum (L1): ' + f(l1) + '.'] : []) };
+        lines: [isToken ? 'Token nie ma minimalnej kwoty.' : 'Sieć nie ma minimalnej kwoty.', 'Opłatę (gas) płacisz w ETH tej sieci: zwykle ' + fe(fee) + ', maksymalnie ' + fe(feeMax) + '.']
+          .concat(l1 ? ['W tym opłata za zapis w Ethereum (L1): ' + fe(l1) + '.'] : [])
+          .concat(isToken ? ['Do wysłania ' + asset.symbol + ' potrzebujesz też trochę ETH w tej sieci.'] : []) };
     }
     case 'btc': {
       const r = await http(asset.rpc + '/v1/fees/recommended');

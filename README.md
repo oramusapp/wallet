@@ -3,10 +3,11 @@
 Natywny portfel kryptowalut (non-custodial) na Androida, React Native + Expo SDK 58.
 Klucz powstaje na telefonie i zostaje w bezpiecznym magazynie (Android Keystore + biometria).
 
-**Stan: faza 3, tylko testnet.**
+**Stan: faza 4, tylko testnet.**
 - Tworzenie i przywracanie 24 słów, adresy grup A, B, C (zgodne z Trust Wallet).
 - Salda: ETH (Sepolia, Arbitrum Sepolia, Base Sepolia), konto Hyperliquid testnet (USDC), BTC testnet4, SOL devnet, SUI, APT, NEAR, XLM, ALGO testnet.
-- Wysyłka z podglądem opłaty i potwierdzeniem odciskiem palca: ETH (3 sieci testowe), BTC testnet4, SOL devnet.
+- Wysyłka z podglądem opłaty i potwierdzeniem odciskiem palca: ETH (3 sieci testowe), USDC (ERC-20: Arbitrum Sepolia, Base Sepolia), BTC testnet4, SOL devnet, XLM (z memo) i ALGO testnet.
+- Sprawdzone prawdziwą wysyłką na testnecie: XLM (ledger 5880474) i ALGO (runda 69533172).
 - Ochrona przed pomyłką: nowy adres → wpisz 4 ostatnie znaki, ostrzeżenie przed podobnym adresem, minimum i opłata widoczne przed wysyłką.
 - Odbiór z kodem QR. LTC, DOGE, DASH, ZEC: na razie tylko adres.
 Zasady bezpieczeństwa: [SECURITY.md](SECURITY.md). Sieci i coiny: [CHAINS.md](CHAINS.md).
@@ -35,6 +36,8 @@ src/net/balances.ts     salda
 src/net/send/evm.ts     przelew ETH (EIP-1559), podpis @noble
 src/net/send/btc.ts     przelew BTC (P2WPKH) przez @scure/btc-signer
 src/net/send/sol.ts     przelew SOL (System Program, sprawdzony bajt w bajt z @solana/web3.js)
+src/net/send/xlm.ts     przelew XLM (Payment/CreateAccount, XDR bajt w bajt jak @stellar/stellar-sdk)
+src/net/send/algo.ts    przelew ALGO (msgpack bajt w bajt jak algosdk)
 src/net/limits.ts       minimum, rezerwy i opłaty na żywo z sieci
 src/net/recipients.ts   znane adresy, podobne adresy, grupy po 4 znaki
 src/vault.ts            jedyne miejsce z dostępem do słów (SecureStore + biometria)

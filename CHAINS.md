@@ -45,3 +45,16 @@ Uwaga: Phantom używa dla Solany innej ścieżki (m/44'/501'/0'/0'), więc te sa
 
 ## Grupy D i E — przez Hyperliquid (decyzja autora, 23.11.2026)
 XRP, TRX, ADA, DOT, FIL, ICP, INJ, TAO, GRAM, XMR — bez natywnych portfeli; ekspozycja przez konto Hyperliquid.
+
+## Status wysyłki (testnet, 23.11.2026)
+| Aktywo | Sieć testowa | Wysyłka |
+| --- | --- | --- |
+| ETH | Sepolia, Arbitrum Sepolia, Base Sepolia | tak (Base: z opłatą L1) |
+| USDC (ERC-20) | Arbitrum Sepolia `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`, Base Sepolia `0x036CbD53842c5426634e7929541eC2318f3dCF7e` (adresy z dokumentacji Circle, sprawdzone on-chain) | tak, opłata w ETH |
+| BTC | testnet4 | tak |
+| SOL | devnet | tak |
+| XLM | testnet | tak, z memo; potwierdzone prawdziwą transakcją |
+| ALGO | testnet | tak; potwierdzone prawdziwą transakcją |
+| SUI, APT, NEAR | testnet | saldo; wysyłka w kolejnym etapie |
+| LTC, DOGE, DASH, ZEC | — | tylko adres |
+| Konto Hyperliquid | testnet | saldo; wpłaty: stary most jest wycofany (docs: „The legacy bridge is deprecated”), zalecany Circle CCTP — do zaprojektowania |

@@ -31,6 +31,10 @@ export async function fetchBalance(asset: Asset, address: string): Promise<bigin
   switch (asset.kind) {
     case 'evm':
       return BigInt(await jsonRpc<string>(rpc, 'eth_getBalance', [address, 'latest']));
+    case 'erc20': {
+      const data = '0x70a08231' + address.toLowerCase().replace(/^0x/, '').padStart(64, '0'); // balanceOf(address)
+      return BigInt(await jsonRpc<string>(rpc, 'eth_call', [{ to: asset.token, data }, 'latest']));
+    }
     case 'hl': {
       const post = (type: string) => http(rpc, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type, user: address }) }).then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
       const [perp, spot] = await Promise.all([post('clearinghouseState'), post('spotClearinghouseState')]);
