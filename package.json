@@ -1,26 +1,33 @@
 {
   "name": "oramus-wallet",
-  "private": true,
   "version": "0.1.0",
-  "type": "module",
+  "private": true,
+  "main": "index.ts",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview",
+    "start": "expo start",
+    "android": "expo run:android",
     "test": "vitest run",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "@noble/curves": "2.4.0",
+    "@noble/hashes": "2.4.0",
+    "@scure/base": "2.4.0",
+    "@scure/bip32": "2.4.0",
+    "@scure/bip39": "2.4.0",
+    "expo": "58.0.23",
+    "expo-clipboard": "58.0.4",
+    "expo-crypto": "58.0.7",
+    "expo-local-authentication": "58.0.2",
+    "expo-screen-capture": "58.0.6",
+    "expo-secure-store": "58.0.2",
+    "expo-status-bar": "58.0.4",
+    "react": "19.3.0",
+    "react-native": "0.88.1"
   },
   "devDependencies": {
-    "@types/node": "^22.20.5",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@vitejs/plugin-react": "^6.2.1",
-    "typescript": "^5.9.0",
-    "vite": "^8.3.6",
-    "vitest": "^5.1.0"
+    "@types/react": "19.3.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
   }
 }
