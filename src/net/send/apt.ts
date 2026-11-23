@@ -9,7 +9,6 @@ import { formatAmount } from '../units';
 
 const fmt = (v: bigint) => formatAmount(v, 8, 8);
 export const APT_MAX_GAS = 2000n; // gas units; a plain transfer uses far less, account creation more
-const TESTNET_CHAIN_ID = 2;
 
 class B {
   b: number[] = [];
@@ -70,12 +69,12 @@ export async function quoteApt(asset: Asset, from: string, toRaw: string, value:
   if (meR.status === 404) throw new Error('Twoje konto Aptos jeszcze nie istnieje — najpierw otrzymaj APT.');
   if (!meR.ok || !gpR.ok || !balR.ok || !infoR.ok) throw new Error('Węzeł Aptos nie odpowiada.');
   const me = await meR.json(), gp = await gpR.json(), info = await infoR.json();
-  if (Number(info.chain_id) !== TESTNET_CHAIN_ID) throw new Error('Węzeł zwrócił inną sieć niż testnet. Przerwano.');
+  if (Number(info.chain_id) !== asset.aptChainId) throw new Error('Węzeł zwrócił inną sieć niż oczekiwana. Przerwano.');
   const balance = BigInt(await balR.json());
   const gasPrice = BigInt(gp.gas_estimate ?? 100);
   const fee = APT_MAX_GAS * gasPrice;
   if (value + fee > balance) throw new Error('Za mało środków: potrzeba ' + fmt(value + fee) + ' APT razem z maks. opłatą, masz ' + fmt(balance) + '.');
-  const tx: AptTx = { from, to, amount: value, seq: BigInt(me.sequence_number), maxGas: APT_MAX_GAS, gasPrice, expiration: BigInt(Math.floor(Date.now() / 1000) + 600), chainId: TESTNET_CHAIN_ID };
+  const tx: AptTx = { from, to, amount: value, seq: BigInt(me.sequence_number), maxGas: APT_MAX_GAS, gasPrice, expiration: BigInt(Math.floor(Date.now() / 1000) + 600), chainId: asset.aptChainId! };
   return { to, value, fee, balance, tx, recipientNew: toR.status === 404 };
 }
 

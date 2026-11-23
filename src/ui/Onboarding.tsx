@@ -12,7 +12,7 @@ export function Welcome({ onCreate, onImport }: { onCreate: () => void; onImport
           <Text style={{ fontSize: 44, fontWeight: '900', color: C.accentInk }}>O</Text>
         </View>
         <Text style={{ color: C.ink, fontSize: 30, fontWeight: '900', marginTop: 18 }}>Oramus Wallet</Text>
-        <Text style={{ color: C.accent, fontWeight: '800', marginTop: 6 }}>TESTNET · bez prawdziwych środków</Text>
+        <Text style={{ color: C.accent, fontWeight: '800', marginTop: 6 }}>Portfel non-custodial · start w sieci testowej</Text>
       </View>
       {[
         ['🔑', 'Klucz tylko na tym telefonie', 'Nikt inny go nie ma — także twórca aplikacji.'],

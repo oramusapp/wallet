@@ -39,14 +39,38 @@ jobs:
       - run: npm ci
       - name: Generate the native Android project
         run: npx expo prebuild --platform android --no-install
+      # Private release key from GitHub Secrets (see SIGNING.md). Without it the APK is signed with the
+      # public debug key and the app keeps mainnet (real funds) locked.
+      - name: Release signing (only when the private key is configured)
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            python3 scripts/ci/release-signing.py
+            echo "ORAMUS_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "EXPO_PUBLIC_RELEASE_SIGNED=1" >> "$GITHUB_ENV"
+            echo "APK_KIND=release" >> "$GITHUB_ENV"
+          else
+            echo "No private key in secrets: building a testnet-only APK (debug key)."
+            echo "APK_KIND=testnet" >> "$GITHUB_ENV"
+          fi
       - name: Build release APK (arm64)
         working-directory: android
+        env:
+          ORAMUS_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ORAMUS_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ORAMUS_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
-      - name: SHA-256 of the APK
-        run: sha256sum android/app/build/outputs/apk/release/app-release.apk | tee apk.sha256
+      - name: Checksum and signing certificate
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          sha256sum "$APK" | tee apk.sha256
+          "$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)/apksigner" verify --print-certs "$APK" | grep -i 'SHA-256' | tee -a apk.sha256
+          rm -f "$RUNNER_TEMP/release.keystore"
       - uses: actions/upload-artifact@v4
         with:
-          name: oramus-wallet-testnet-apk
+          name: oramus-wallet-${{ env.APK_KIND }}-apk
           path: |
             android/app/build/outputs/apk/release/app-release.apk
             apk.sha256

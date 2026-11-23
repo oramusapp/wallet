@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, Share, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ASSETS, type Asset } from '../net/assets';
+import type { Asset } from '../net/assets';
 import { formatAmount } from '../net/units';
 import { getLimits, type Limits } from '../net/limits';
 import { Btn, C, Card, Chip, CoinIcon, KV, Note, P, Screen } from './kit';
@@ -25,25 +25,25 @@ export function balText(a: Asset, b?: Bal, frac = 6): string {
   return formatAmount(b.v, a.decimals, frac);
 }
 
-export function Home({ bals, refreshing, onRefresh, onOpen, onSend, onReceive }: {
-  bals: Bals; refreshing: boolean; onRefresh: () => void; onOpen: (a: Asset) => void; onSend: () => void; onReceive: () => void;
+export function Home({ assets, net, bals, refreshing, onRefresh, onOpen, onSend, onReceive }: {
+  assets: Asset[]; net: 'testnet' | 'mainnet'; bals: Bals; refreshing: boolean; onRefresh: () => void; onOpen: (a: Asset) => void; onSend: () => void; onReceive: () => void;
 }) {
   const ins = useSafeAreaInsets();
-  const live = ASSETS.filter((a) => a.kind !== 'none');
-  const later = ASSETS.filter((a) => a.kind === 'none');
+  const live = assets.filter((a) => a.kind !== 'none');
+  const later = assets.filter((a) => a.kind === 'none');
   const funded = live.filter((a) => (bals[a.id]?.v ?? 0n) > 0n).length;
   return (
     <ScrollView contentContainerStyle={{ padding: 20, paddingTop: ins.top + 12, paddingBottom: 24 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.accent} colors={[C.accent]} progressBackgroundColor={C.card} />}>
-      <Text style={{ color: C.muted, fontWeight: '800', fontSize: 13, letterSpacing: 0.6 }}>PORTFEL · TESTNET</Text>
+      <Text style={{ color: net === 'mainnet' ? C.danger : C.muted, fontWeight: '800', fontSize: 13, letterSpacing: 0.6 }}>{net === 'mainnet' ? 'PORTFEL · SIEĆ GŁÓWNA · PRAWDZIWE ŚRODKI' : 'PORTFEL · TESTNET'}</Text>
       <Text style={{ color: C.ink, fontSize: 30, fontWeight: '900', marginTop: 4 }}>{funded ? funded + ' ' + plAktywa(funded) + ' z saldem' : 'Pusty portfel'}</Text>
-      <Text style={{ color: C.muted, marginTop: 4, marginBottom: 18 }}>Monety testowe nie mają wartości. Przeciągnij w dół, aby odświeżyć.</Text>
+      <Text style={{ color: C.muted, marginTop: 4, marginBottom: 18 }}>{net === 'mainnet' ? 'Przeciągnij w dół, aby odświeżyć.' : 'Monety testowe nie mają wartości. Przeciągnij w dół, aby odświeżyć.'}</Text>
       <View style={{ flexDirection: 'row', gap: 10, marginBottom: 22 }}>
         <Btn label="↓  Odbierz" kind="soft" onPress={onReceive} style={{ flex: 1 }} />
         <Btn label="↑  Wyślij" onPress={onSend} style={{ flex: 1 }} />
       </View>
       {live.map((a) => <AssetRow key={a.id} a={a} b={bals[a.id]} onPress={() => onOpen(a)} />)}
-      <Text style={{ color: C.muted, fontWeight: '800', fontSize: 12, letterSpacing: 0.6, marginTop: 18, marginBottom: 8 }}>TYLKO ADRES (SALDA W KOLEJNYM ETAPIE)</Text>
+      <Text style={{ color: C.muted, fontWeight: '800', fontSize: 12, letterSpacing: 0.6, marginTop: 18, marginBottom: 8 }}>TYLKO ADRES</Text>
       {later.map((a) => <AssetRow key={a.id} a={a} onPress={() => onOpen(a)} />)}
     </ScrollView>
   );

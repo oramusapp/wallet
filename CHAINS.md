@@ -46,17 +46,18 @@ Uwaga: Phantom używa dla Solany innej ścieżki (m/44'/501'/0'/0'), więc te sa
 ## Grupy D i E — przez Hyperliquid (decyzja autora, 23.11.2026)
 XRP, TRX, ADA, DOT, FIL, ICP, INJ, TAO, GRAM, XMR — bez natywnych portfeli; ekspozycja przez konto Hyperliquid.
 
-## Status wysyłki (testnet, 23.11.2026)
-| Aktywo | Sieć testowa | Wysyłka |
-| --- | --- | --- |
-| ETH | Sepolia, Arbitrum Sepolia, Base Sepolia | tak (Base: z opłatą L1) |
-| USDC (ERC-20) | Arbitrum Sepolia `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`, Base Sepolia `0x036CbD53842c5426634e7929541eC2318f3dCF7e` (adresy z dokumentacji Circle, sprawdzone on-chain) | tak, opłata w ETH |
-| BTC | testnet4 | tak |
-| SOL | devnet | tak |
-| XLM | testnet | tak, z memo; potwierdzone prawdziwą transakcją |
-| ALGO | testnet | tak; potwierdzone prawdziwą transakcją |
-| APT | testnet | tak; potwierdzone prawdziwą transakcją (wersja 638712336, 52 jednostki gazu) |
-| NEAR | testnet | tak; bajty zgodne z oficjalnym SDK (publiczne konto testowe ma usunięty klucz, więc bez prawdziwej wysyłki) |
-| SUI | testnet | saldo; wysyłka w kolejnym etapie (wybór monet-obiektów do opłaty) |
-| LTC, DOGE, DASH, ZEC | — | tylko adres |
-| Konto Hyperliquid | testnet | saldo; wpłaty: stary most jest wycofany (docs: „The legacy bridge is deprecated”), zalecany Circle CCTP — do zaprojektowania |
+## Status (23.11.2026, wersja 0.6.0)
+| Aktywo | Sieć główna | Testnet | Weryfikacja |
+| --- | --- | --- | --- |
+| ETH / BNB / AVAX / HYPE | Ethereum, Arbitrum, Base, Optimism, BNB Chain, Avalanche, HyperEVM | Sepolia, Arbitrum Sepolia, Base Sepolia | podpis odzyskuje nasz adres; chainId węzła sprawdzany |
+| USDC i własne ERC-20 | Ethereum, Arbitrum, Base, Avalanche, HyperEVM (Circle) + dowolny kontrakt | Arbitrum Sepolia, Base Sepolia | dane transferu dekodowane w testach |
+| BTC, LTC | tak (mempool.space, litecoinspace.org) | BTC testnet4, LTC testnet | podpis SegWit, plan wpłat i reszty |
+| DOGE, DASH | tak (BlockCypher, P2PKH) | brak publicznego testnetu | podpis zweryfikowany względem sighash z bitcoinjs-lib |
+| SOL | tak | devnet | bajt w bajt z @solana/web3.js |
+| SUI | tak | testnet | bajt w bajt i podpis z @mysten/sui; format mutacji sprawdzony na węźle |
+| APT | tak (chainId 1) | testnet (chainId 2) | bajt w bajt z @aptos-labs/ts-sdk; **prawdziwa wysyłka testnet** |
+| NEAR | tak | testnet | bajt w bajt z @near-js/transactions |
+| XLM | tak (z memo) | testnet | bajt w bajt z @stellar/stellar-sdk; **prawdziwa wysyłka testnet** |
+| ALGO | tak | testnet | bajt w bajt z algosdk; **prawdziwa wysyłka testnet** |
+| Konto Hyperliquid | saldo | saldo | wpłaty: stary most wycofany, CCTP — nie zrobione |
+| ZEC | tylko adres | tylko adres | wysyłka wymaga formatu ZIP-244 — nie zrobione |

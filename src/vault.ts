@@ -70,6 +70,7 @@ export async function unlockApp(): Promise<boolean> {
 export async function wipeWallet(): Promise<void> {
   await SecureStore.deleteItemAsync(K_MNEMONIC, SECRET_OPTS);
   await SecureStore.deleteItemAsync(K_ACCOUNTS, PUBLIC_OPTS);
+  for (const k of ['wallet.recipients.v1', 'wallet.network.v1', 'wallet.tokens.v1']) await SecureStore.deleteItemAsync(k, PUBLIC_OPTS).catch(() => {});
 }
 
 /**
@@ -111,4 +112,20 @@ export async function rememberRecipient(assetId: string, address: string): Promi
   const list = all[assetId] ?? [];
   if (!list.includes(address)) all[assetId] = [address, ...list].slice(0, 50);
   await SecureStore.setItemAsync(K_RECIPIENTS, JSON.stringify(all), PUBLIC_OPTS);
+}
+
+// ---------- settings that are not secret ----------
+const K_NETWORK = 'wallet.network.v1';
+const K_TOKENS = 'wallet.tokens.v1';
+export async function loadNetwork(): Promise<'testnet' | 'mainnet'> {
+  return (await SecureStore.getItemAsync(K_NETWORK, PUBLIC_OPTS)) === 'mainnet' ? 'mainnet' : 'testnet';
+}
+export async function saveNetwork(n: 'testnet' | 'mainnet'): Promise<void> {
+  await SecureStore.setItemAsync(K_NETWORK, n, PUBLIC_OPTS);
+}
+export async function loadTokens<T>(): Promise<T[]> {
+  try { return JSON.parse((await SecureStore.getItemAsync(K_TOKENS, PUBLIC_OPTS)) || '[]'); } catch { return []; }
+}
+export async function saveTokens<T>(list: T[]): Promise<void> {
+  await SecureStore.setItemAsync(K_TOKENS, JSON.stringify(list), PUBLIC_OPTS);
 }

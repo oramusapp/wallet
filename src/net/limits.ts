@@ -4,7 +4,9 @@ import { http, jsonRpc } from './balances';
 import { formatAmount } from './units';
 import { solRentMin, solTransferMessage } from './send/sol';
 import { erc20TransferData, opStackL1Fee } from './send/evm';
+import { utxoFeeRate } from './send/utxo';
 import { APT_MAX_GAS } from './send/apt';
+import { suiBudget } from './send/sui';
 import { base64 } from '@scure/base';
 
 export interface Limits {
@@ -21,8 +23,6 @@ export interface Limits {
   lines: string[];
 }
 
-export const BTC_DUST = 546n; // P2PKH dust threshold; the wallet uses it for every output (conservative)
-export const BTC_TX_VBYTES = 141n; // 1 P2WPKH input, 2 P2WPKH outputs
 export const HL_MIN_DEPOSIT_USDC = 5_000_000n; // 5 USDC (6 decimals) — Hyperliquid docs: smaller deposits are lost
 
 export async function getLimits(asset: Asset, from: string): Promise<Limits> {
@@ -32,7 +32,8 @@ export async function getLimits(asset: Asset, from: string): Promise<Limits> {
     case 'erc20': {
       const rpc = asset.rpc!;
       const isToken = asset.kind === 'erc20';
-      const fe = (v: bigint) => formatAmount(v, 18, 18) + ' ETH';
+      const NS = asset.feeSymbol ?? asset.symbol;
+      const fe = (v: bigint) => formatAmount(v, 18, 18) + ' ' + NS;
       const [block, tipHex, gasHex] = await Promise.all([
         jsonRpc<{ baseFeePerGas?: string }>(rpc, 'eth_getBlockByNumber', ['latest', false]),
         jsonRpc<string>(rpc, 'eth_maxPriorityFeePerGas', []).catch(() => '0x3b9aca00'),
@@ -48,16 +49,17 @@ export async function getLimits(asset: Asset, from: string): Promise<Limits> {
       }
       const fee = gas * (base + tip) + l1, feeMax = gas * (base * 2n + tip) + l1;
       return { minSend: 1n, minNewAccount: 0n, reserve: 0n, fee, feeMax, feeLabel: 'gas ' + gas + ' × ' + gwei(base + tip) + ' gwei',
-        lines: [isToken ? 'Token nie ma minimalnej kwoty.' : 'Sieć nie ma minimalnej kwoty.', 'Opłatę (gas) płacisz w ETH tej sieci: zwykle ' + fe(fee) + ', maksymalnie ' + fe(feeMax) + '.']
+        lines: [isToken ? 'Token nie ma minimalnej kwoty.' : 'Sieć nie ma minimalnej kwoty.', 'Opłatę (gas) płacisz w ' + NS + ' tej sieci: zwykle ' + fe(fee) + ', maksymalnie ' + fe(feeMax) + '.']
           .concat(l1 ? ['W tym opłata za zapis w Ethereum (L1): ' + fe(l1) + '.'] : [])
-          .concat(isToken ? ['Do wysłania ' + asset.symbol + ' potrzebujesz też trochę ETH w tej sieci.'] : []) };
+          .concat(isToken ? ['Do wysłania ' + asset.symbol + ' potrzebujesz też trochę ' + NS + ' w tej sieci.'] : []) };
     }
-    case 'btc': {
-      const r = await http(asset.rpc + '/v1/fees/recommended');
-      const rate = BigInt(Math.max(1, Math.ceil(Number((await r.json()).halfHourFee) || 1)));
-      const fee = rate * BTC_TX_VBYTES;
-      return { minSend: BTC_DUST, minNewAccount: 0n, reserve: 0n, fee, feeLabel: rate + ' sat/vB × ok. ' + BTC_TX_VBYTES + ' vB',
-        lines: ['Minimum: ' + f(BTC_DUST) + ' (546 sat — mniejszej kwoty sieć nie przekaże).', 'Opłata: ok. ' + f(fee) + ' (' + rate + ' sat/vB); rośnie z liczbą wpłat, z których składa się transakcja.'] };
+    case 'utxo': {
+      const cfg = asset.utxo!;
+      const rate = await utxoFeeRate(cfg);
+      const vb = cfg.segwit ? 141n : 226n; // 1 input + 2 outputs: P2WPKH ~141 vB, P2PKH ~226 B
+      const fee = rate * vb;
+      return { minSend: cfg.dust, minNewAccount: 0n, reserve: 0n, fee, feeLabel: rate + ' sat/' + (cfg.segwit ? 'vB' : 'B') + ' × ok. ' + vb,
+        lines: ['Minimum: ' + f(cfg.dust) + ' (mniejszej kwoty sieć nie przekaże).', 'Opłata: ok. ' + f(fee) + ' (' + rate + ' sat/' + (cfg.segwit ? 'vB' : 'bajt') + '); rośnie z liczbą wpłat, z których składa się transakcja.'] };
     }
     case 'sol': {
       const rent = await solRentMin(asset);
@@ -110,8 +112,13 @@ export async function getLimits(asset: Asset, from: string): Promise<Limits> {
       return { minSend: 1n, minNewAccount: minNew, reserve, fee: feeMax, feeMax,
         lines: ['Nowe konto ukryte (64 znaki hex): pierwsza wpłata min. ok. ' + fn(minNew) + ' (opłata za przechowywanie konta).', 'Na Twoim koncie musi zostać ' + fn(reserve) + ' (przechowywanie danych konta).', 'Opłata: maks. ' + fn(feeMax) + ' (zwykle mniej; nadwyżka gazu wraca).'] };
     }
-    case 'sui':
-      return { minSend: 1n, minNewAccount: 0n, reserve: 0n, lines: ['Brak minimalnej kwoty. Opłatę płacisz w ' + asset.symbol + '.'] };
+    case 'sui': {
+      const r = await http(asset.rpc!, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: '{ epoch { referenceGasPrice } }' }) });
+      const gp = BigInt((await r.json()).data.epoch.referenceGasPrice);
+      const feeMax = suiBudget(gp);
+      return { minSend: 1n, minNewAccount: 0n, reserve: 0n, fee: feeMax, feeMax,
+        lines: ['Brak minimalnej kwoty.', 'Opłata: maks. ' + f(feeMax) + ' (budżet gazu; niewykorzystana część wraca).'] };
+    }
     default:
       return { minSend: 0n, minNewAccount: 0n, reserve: 0n, lines: [] };
   }

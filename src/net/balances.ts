@@ -1,6 +1,7 @@
 // Read-only balance queries. Every function returns the balance in the asset's smallest unit.
 import type { Asset } from './assets';
 import { decimalStringToUnits } from './units';
+import { utxoBalance } from './send/utxo';
 
 const TIMEOUT_MS = 15_000;
 
@@ -42,11 +43,8 @@ export async function fetchBalance(asset: Asset, address: string): Promise<bigin
       const usdc = (spot?.balances ?? []).find((b: any) => b.coin === 'USDC');
       return perpV + decimalStringToUnits(usdc?.total ?? '0', asset.decimals);
     }
-    case 'btc': {
-      const j = await getJson(rpc + '/address/' + address);
-      const c = j.chain_stats, m = j.mempool_stats;
-      return BigInt(c.funded_txo_sum - c.spent_txo_sum + m.funded_txo_sum - m.spent_txo_sum);
-    }
+    case 'utxo':
+      return utxoBalance(asset.utxo!, address);
     case 'sol':
       return BigInt((await jsonRpc<{ value: number }>(rpc, 'getBalance', [address, { commitment: 'confirmed' }])).value);
     case 'sui': {

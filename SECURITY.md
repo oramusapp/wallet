@@ -23,9 +23,13 @@ Na start jeden użytkownik (autor), bez sklepu. Faza 1: tylko testnet.
 10. **Brak analityki, logów i serwera.** Aplikacja łączy się tylko z węzłami sieci blockchain.
 11. **Zależności:** dokładne wersje (bez `^`), `package-lock.json`, nowe wersje dopiero po 14 dniach od publikacji
     (`npm install --before=<data>`), żeby nie złapać świeżo przejętej paczki.
-12. **Podpis APK.** Faza 1 (testnet): domyślny klucz debug z szablonu Expo — wystarczy do testów, ale jest publiczny.
-    **Przed mainnetem:** prywatny klucz podpisu w GitHub Secrets, odcisk certyfikatu zapisany przez autora;
-    akcje GitHub przypięte do konkretnych commitów.
+12. **Podpis APK i sieć główna.** Bez prywatnego klucza w GitHub Secrets APK jest podpisany publicznym kluczem debug
+    i aplikacja **nie pozwala** włączyć sieci głównej (flaga `EXPO_PUBLIC_RELEASE_SIGNED` ustawiana przez CI tylko
+    przy podpisie prywatnym kluczem). Instrukcja: SIGNING.md. Odcisk certyfikatu jest w `apk.sha256` każdego buildu.
+13. **Sieć główna:** przełączenie wymaga wpisania „PRAWDZIWE”; na ekranie potwierdzenia czerwony pasek „SIEĆ GŁÓWNA”.
+    Build podpisany kluczem debug zawsze startuje w sieci testowej, nawet jeśli wcześniej wybrano główną.
+14. **Własne tokeny:** dane (symbol, nazwa, miejsca po przecinku) czytane z kontraktu; brak kontraktu pod adresem = odmowa;
+    ostrzeżenie, że adres trzeba wziąć z oficjalnej strony projektu.
 
 ## Wysyłka (faza 2)
 - Podgląd przed podpisem: odbiorca, kwota, opłata maksymalna, razem. Podgląd wygasa po 60 s.
@@ -46,8 +50,8 @@ Na start jeden użytkownik (autor), bez sklepu. Faza 1: tylko testnet.
 - Lista odbiorców (adresy publiczne) zapisuje się na telefonie dopiero po udanej wysyłce.
 
 ## Zanim wejdą prawdziwe środki (mainnet)
-- Wysyłka przetestowana na testnecie w każdej sieci, podgląd transakcji (komu, ile, opłata) przed podpisem.
-- Prywatny klucz podpisu APK (pkt 12).
+- Prywatny klucz podpisu APK (pkt 12, SIGNING.md) — bez niego sieć główna jest zablokowana.
+- Pierwsza wysyłka w każdej sieci: mała kwota, sprawdzona w eksploratorze.
 - Mały limit na start; większe kwoty dopiero po tygodniach bez problemów.
 - Przed udostępnieniem komukolwiek innemu: zewnętrzny audyt.
 

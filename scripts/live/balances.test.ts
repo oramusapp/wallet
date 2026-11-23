@@ -5,7 +5,7 @@ import { fetchBalance } from '../../src/net/balances';
 import { deriveAll } from '../../src/wallet/derive';
 import { seedFromMnemonic } from '../../src/wallet/mnemonic';
 const acc = Object.fromEntries(deriveAll(seedFromMnemonic('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'), 'testnet').map(a => [a.chainId, a.address]));
-for (const a of ASSETS.filter(x => x.kind !== 'none' && x.id !== 'usdc-hl')) {
+for (const a of ASSETS.filter(x => x.net === 'testnet' && x.kind !== 'none' && x.id !== 'usdc-hl')) {
   it(a.id, async () => { const v = await fetchBalance(a, acc[a.chainId]); console.log(a.id, acc[a.chainId], v.toString()); expect(typeof v).toBe('bigint'); }, 30000);
 }
 

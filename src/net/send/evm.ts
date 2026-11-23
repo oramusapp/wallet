@@ -7,7 +7,7 @@ import type { Asset } from '../assets';
 import { jsonRpc } from '../balances';
 import { formatAmount } from '../units';
 
-const fmtEth = (v: bigint) => formatAmount(v, 18, 18);
+const fmtNative = (v: bigint) => formatAmount(v, 18, 18);
 
 export interface EvmQuote {
   /** Recipient shown to the user (for a token: the person, not the token contract). */
@@ -66,6 +66,7 @@ export async function quoteEvm(asset: Asset, from: string, toRaw: string, value:
     isToken ? jsonRpc<string>(rpc, 'eth_call', [{ to: asset.token, data: balanceOf }, 'latest']) : Promise.resolve('0x0')
   ]);
   if (Number(BigInt(chainHex)) !== asset.evmChainId) throw new Error('Węzeł zwrócił inną sieć niż oczekiwana. Przerwano.');
+  const N = asset.feeSymbol ?? asset.symbol;
   const nativeBalance = BigInt(balHex);
   const balance = isToken ? BigInt(tokenHex) : nativeBalance;
   const f = (v: bigint) => formatAmount(v, asset.decimals, asset.decimals);
@@ -78,7 +79,7 @@ export async function quoteEvm(asset: Asset, from: string, toRaw: string, value:
   try { gasHex = await jsonRpc<string>(rpc, 'eth_estimateGas', [{ from, to: txTo, value: '0x' + txValue.toString(16), ...(data ? { data } : {}) }]); }
   catch (e) {
     const m = (e as Error).message;
-    if (/insufficient funds/i.test(m)) throw new Error('Za mało ETH na opłatę sieci' + (isToken ? ' (opłatę za token płacisz w ETH).' : '.'));
+    if (/insufficient funds/i.test(m)) throw new Error('Za mało ' + N + ' na opłatę sieci' + (isToken ? ' (opłatę za token płacisz w ' + N + ').' : '.'));
     throw new Error('Sieć nie przyjmie tej transakcji: ' + m.slice(0, 160));
   }
   const base = BigInt(block.baseFeePerGas ?? '0x0');
@@ -90,7 +91,7 @@ export async function quoteEvm(asset: Asset, from: string, toRaw: string, value:
   const l1Fee = asset.opStack ? await opStackL1Fee(asset, tx) : 0n;
   const maxFee = gas * maxFeePerGas + l1Fee;
   const need = maxFee + txValue;
-  if (need > nativeBalance) throw new Error('Za mało ETH: potrzeba ' + fmtEth(need) + ' ETH' + (isToken ? ' na opłatę' : ' razem z maks. opłatą') + ', masz ' + fmtEth(nativeBalance) + '.');
+  if (need > nativeBalance) throw new Error('Za mało ' + N + ': potrzeba ' + fmtNative(need) + ' ' + N + (isToken ? ' na opłatę' : ' razem z maks. opłatą') + ', masz ' + fmtNative(nativeBalance) + '.');
   return { to, value, txTo, txValue, data, nonce, gas, maxFeePerGas, maxPriorityFeePerGas: tip, maxFee, fee: gas * (base + tip) + l1Fee, l1Fee, balance, nativeBalance, toIsContract: !!code && code !== '0x' };
 }
 

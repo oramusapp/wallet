@@ -4,7 +4,9 @@ import * as btc from '@scure/btc-signer';
 import { decodeFunctionData, erc20Abi, parseTransaction, recoverTransactionAddress, type Hex } from 'viem';
 import { assetById } from '../assets';
 import { checkEvmAddress, erc20TransferData, signEvm, type EvmQuote } from '../send/evm';
-import { checkBtcAddress, planBtc, signBtc, type BtcQuote } from '../send/btc';
+import { checkUtxoAddress, planUtxo, signUtxo, type UtxoQuote } from '../send/utxo';
+import * as bitcoin from 'bitcoinjs-lib';
+import { secp256k1 } from '@noble/curves/secp256k1.js';
 import { formatAmount, parseAmount, decimalStringToUnits } from '../units';
 import { CHAINS } from '../../wallet/chains';
 import { deriveAccount, deriveSecpPrivateKey } from '../../wallet/derive';
@@ -80,42 +82,69 @@ describe('ERC-20 (USDC)', () => {
   });
 });
 
-describe('BTC', () => {
+describe('UTXO: BTC (P2WPKH) and DOGE (P2PKH)', () => {
+  const btcCfg = assetById('btc-testnet4')!.utxo!;
   const acc = deriveAccount(seed, btcChain, 'testnet');
   const utxos = [
     { txid: 'aa'.repeat(32), vout: 0, value: 30_000 },
     { txid: 'bb'.repeat(32), vout: 1, value: 50_000 }
   ];
   it('address checks', () => {
-    expect(checkBtcAddress(acc.address)).toBe(acc.address);
-    expect(() => checkBtcAddress('bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu')).toThrow(); // mainnet address on testnet
-    expect(() => checkBtcAddress('tb1qxyz')).toThrow();
+    expect(checkUtxoAddress(acc.address, btcCfg)).toBe(acc.address);
+    expect(() => checkUtxoAddress('bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu', btcCfg)).toThrow(); // mainnet address on testnet
+    expect(() => checkUtxoAddress('tb1qxyz', btcCfg)).toThrow();
+    expect(() => checkUtxoAddress('DBus3bamQjgJULBJtYXpEzDWQRwF5iwxgC', assetById('btc')!.utxo!)).toThrow(); // DOGE address on BTC
   });
   it('plans inputs, fee and change', () => {
-    const sel = planBtc(utxos, hex.decode(acc.publicKey), 'tb1q6rz28mcfaxtmd6v789l9rrlrusdprr9pqcpvkl', 40_000n, 2n);
-    const ins = sel.inputs.reduce((t, i) => t + (i.witnessUtxo!.amount as bigint), 0n);
-    const outs = sel.outputs.reduce((t, o) => t + o.amount, 0n);
+    const sel = planUtxo(utxos, hex.decode(acc.publicKey), 'tb1q6rz28mcfaxtmd6v789l9rrlrusdprr9pqcpvkl', 40_000n, 2n, btcCfg);
+    const ins = sel.inputs.reduce((t: bigint, i: any) => t + (i.witnessUtxo!.amount as bigint), 0n);
+    const outs = sel.outputs.reduce((t: bigint, o: any) => t + o.amount, 0n);
     expect(ins - outs).toBe(sel.fee);
     expect(sel.fee! > 0n && sel.fee! < 2_000n).toBe(true);
-    expect(() => planBtc(utxos, hex.decode(acc.publicKey), acc.address, 79_990n, 2n)).toThrow();
+    expect(() => planUtxo(utxos, hex.decode(acc.publicKey), acc.address, 79_990n, 2n, btcCfg)).toThrow();
   });
-  it('signs a valid, finalized segwit transaction', () => {
-    const q: BtcQuote = { to: 'tb1q6rz28mcfaxtmd6v789l9rrlrusdprr9pqcpvkl', value: 40_000n, feeRate: 2n, fee: 0n, change: true, utxos, balance: 80_000n };
-    q.fee = planBtc(utxos, hex.decode(acc.publicKey), q.to, q.value, q.feeRate).fee!;
+  it('signs a valid segwit transaction with change back to us', () => {
+    const q: UtxoQuote = { to: 'tb1q6rz28mcfaxtmd6v789l9rrlrusdprr9pqcpvkl', value: 40_000n, feeRate: 2n, fee: 0n, change: true, utxos, balance: 80_000n };
+    q.fee = planUtxo(utxos, hex.decode(acc.publicKey), q.to, q.value, q.feeRate, btcCfg).fee!;
     const pk = deriveSecpPrivateKey(seed, btcChain, 'testnet');
-    const { hex: raw, txid } = signBtc(q, pk);
+    const { hex: raw, txid } = signUtxo(q, pk, btcCfg);
     pk.fill(0);
     const tx = btc.Transaction.fromRaw(hex.decode(raw));
     expect(tx.id).toBe(txid);
     expect(tx.isFinal).toBe(true);
     const outAddrs = Array.from({ length: tx.outputsLength }, (_, i) => btc.Address(btc.TEST_NETWORK).encode(btc.OutScript.decode(tx.getOutput(i).script!)));
     expect(outAddrs).toContain(q.to);
-    expect(outAddrs).toContain(acc.address); // change goes back to us
+    expect(outAddrs).toContain(acc.address);
   });
   it('refuses to sign if the fee changed since the preview', () => {
-    const q: BtcQuote = { to: 'tb1q6rz28mcfaxtmd6v789l9rrlrusdprr9pqcpvkl', value: 40_000n, feeRate: 2n, fee: 1n, change: true, utxos, balance: 80_000n };
+    const q: UtxoQuote = { to: 'tb1q6rz28mcfaxtmd6v789l9rrlrusdprr9pqcpvkl', value: 40_000n, feeRate: 2n, fee: 1n, change: true, utxos, balance: 80_000n };
     const pk = deriveSecpPrivateKey(seed, btcChain, 'testnet');
-    expect(() => signBtc(q, pk)).toThrow();
+    expect(() => signUtxo(q, pk, btcCfg)).toThrow();
     pk.fill(0);
+  });
+  it('DOGE P2PKH: legacy signature verifies against a sighash computed by bitcoinjs-lib', () => {
+    const doge = assetById('doge')!, cfg = doge.utxo!;
+    const dogeChain = CHAINS.find((c) => c.id === 'doge')!;
+    const me = deriveAccount(seed, dogeChain, 'mainnet');
+    expect(me.address).toBe('DBus3bamQjgJULBJtYXpEzDWQRwF5iwxgC');
+    const prev = new btc.Transaction();
+    prev.addInput({ txid: new Uint8Array(32).fill(1), index: 0 });
+    prev.addOutputAddress(me.address, 50_000_000_000n, cfg.net);
+    const u = [{ txid: prev.id, vout: 0, value: 50_000_000_000, raw: hex.encode(prev.unsignedTx) }];
+    const to = me.address; // sending to self is fine for the test
+    const q: UtxoQuote = { to, value: 1_000_000_000n, feeRate: 1000n, fee: 0n, change: true, utxos: u, balance: 50_000_000_000n };
+    q.fee = planUtxo(u, hex.decode(me.publicKey), to, q.value, q.feeRate, cfg).fee!;
+    const pk = deriveSecpPrivateKey(seed, dogeChain, 'mainnet');
+    const { hex: raw } = signUtxo(q, pk, cfg);
+    pk.fill(0);
+    const tx = bitcoin.Transaction.fromHex(raw);
+    expect(tx.ins.length).toBe(1);
+    const chunks = bitcoin.script.decompile(tx.ins[0].script)!;
+    const sigWithType = chunks[0] as Uint8Array, pub = chunks[1] as Uint8Array;
+    expect(Buffer.from(pub).toString('hex')).toBe(me.publicKey);
+    const prevScript = btc.OutScript.encode(btc.Address(cfg.net).decode(me.address));
+    const sighash = tx.hashForSignature(0, Buffer.from(prevScript), sigWithType[sigWithType.length - 1]);
+    const der = sigWithType.slice(0, -1);
+    expect(secp256k1.verify(der, sighash, pub, { prehash: false, format: 'der' })).toBe(true);
   });
 });
